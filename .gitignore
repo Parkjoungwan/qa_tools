@@ -1,0 +1,33 @@
+# Environments
+.env
+.env.*
+!.env.example
+.env.bak
+
+# Python
+*.pyc
+__pycache__/
+venv/
+*.egg-info/
+dist/
+build/
+
+# C/C++ compiled files
+*.o
+*.out
+*.exe
+*.so
+*.dll
+
+# OS-specific files
+.DS_Store
+
+# Log files
+*.log
+log/
+logs/
+
+# Temporary files
+*.tmp
+.tmp_screen.png
+scrcpy.tar.gz

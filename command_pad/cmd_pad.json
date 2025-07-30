@@ -1,0 +1,50 @@
+[
+  [
+    "login",
+    "/Users/kim/opencv_project/venv/bin/python /Users/kim/opencv_project/opencv_test_automation/tests/device_multi_run.py login_logout -- 0"
+  ],
+  [
+    "AppStart_left",
+    "sh /Users/kim/opencv_project/command_pad/scripts/start_app_device2.sh"
+  ],
+  [
+    "AppStart_right",
+    "sh /Users/kim/opencv_project/command_pad/scripts/start_app_device1.sh"
+  ],
+  [
+    "rebootApp_left",
+    "sh /Users/kim/opencv_project/command_pad/scripts/rebootApp.sh"
+  ],
+  [
+    "rebootApp_right",
+    "sh /Users/kim/opencv_project/command_pad/scripts/rebootApp_bone.sh"
+  ],
+  [
+    "switch_grade",
+    "sh /Users/kim/opencv_project/command_pad/scripts/switch_grade.sh"
+  ],
+  [
+    "switch_ids",
+    "sh /Users/kim/opencv_project/command_pad/scripts/switch_ids.sh"
+  ],
+  [
+    "clearData_left",
+    "sh /Users/kim/opencv_project/command_pad/scripts/clearData.sh"
+  ],
+  [
+    "clearData_right",
+    "sh /Users/kim/opencv_project/command_pad/scripts/clearData_right.sh"
+  ],
+  [
+    "clearApp",
+    "sh /Users/kim/opencv_project/command_pad/scripts/clearApp.sh"
+  ],
+  [
+    "devicesReboot_left.sh",
+    " sh /Users/kim/opencv_project/command_pad/scripts/devicesReboot.sh"
+  ],
+  [
+    "devicesReboot_right.sh",
+    "sh /Users/kim/opencv_project/command_pad/scripts/devicesReboot_right.sh"
+  ]
+]
