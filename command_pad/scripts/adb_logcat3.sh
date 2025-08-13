@@ -6,7 +6,7 @@
 520068a9435db5d5set -euo pipefail
 
 # 타겟 기기 serial (하드코딩)
-TARGET_SERIAL="5200540243deb597"
+TARGET_SERIAL="R8YW81D1XSJ"
 
 # 연결된 기기 목록 확인
 DEVICES=($(adb devices | awk 'NR>1 && $2=="device" {print $1}'))

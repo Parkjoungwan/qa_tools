@@ -1,0 +1,123 @@
+[
+  {
+    "name": "pass_problem",
+    "queue": [
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/pass_problem.log",
+        1,
+        1.0
+      ]
+    ]
+  },
+  {
+    "name": "pass_ai_math",
+    "queue": [
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/pass_problem_ai_math.log",
+        1,
+        1.0
+      ]
+    ]
+  },
+  {
+    "name": "check_activity",
+    "queue": [
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/check_activity.log",
+        1,
+        1.0
+      ]
+    ]
+  },
+  {
+    "name": "improvement_problem_error",
+    "queue": [
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/improve_problem_move.log",
+        1,
+        1.0
+      ]
+    ]
+  },
+  {
+    "name": "admin_toggle",
+    "queue": [
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/admin_toggle.log",
+        1,
+        1.0
+      ]
+    ]
+  },
+  {
+    "name": "2-2",
+    "queue": [
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/2_2_musicCheck.log",
+        1,
+        1.0
+      ]
+    ]
+  },
+  {
+    "name": "2",
+    "queue": [
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/check2.log",
+        1,
+        1.0
+      ]
+    ]
+  },
+  {
+    "name": "3",
+    "queue": [
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log/adb_20250808_135337.log",
+        1,
+        1.0
+      ]
+    ]
+  },
+  {
+    "name": "3-3",
+    "queue": [
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log/adb_20250808_143611.log",
+        1,
+        1.0
+      ]
+    ]
+  },
+  {
+    "name": "2setProblemPass",
+    "queue": [
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/2setStudyPass.log",
+        1,
+        1.0
+      ]
+    ]
+  },
+  {
+    "name": "1setProblemPass",
+    "queue": [
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/1setProblemPass.log",
+        1,
+        1.0
+      ]
+    ]
+  }
+]

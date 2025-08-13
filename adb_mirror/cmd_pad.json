@@ -1,6 +1,0 @@
-[
-  [
-    "login",
-    " python -m tests.device_multi_run login_logout -- 0"
-  ]
-]

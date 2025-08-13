@@ -116,4 +116,3 @@ def text(serial, text_to_input, v):
     v.adb_executing=True; v.update()
     run(["adb", "-s", serial, "shell", "input", "text", f'"{text_to_input}"'])
     v.adb_executing=False; v.update()
-

@@ -28,6 +28,10 @@
     "sh /Users/kim/opencv_project/command_pad/scripts/switch_ids.sh"
   ],
   [
+    "clearApp",
+    "sh /Users/kim/opencv_project/command_pad/scripts/clearApp.sh"
+  ],
+  [
     "clearData_left",
     "sh /Users/kim/opencv_project/command_pad/scripts/clearData.sh"
   ],
@@ -36,15 +40,15 @@
     "sh /Users/kim/opencv_project/command_pad/scripts/clearData_right.sh"
   ],
   [
-    "clearApp",
-    "sh /Users/kim/opencv_project/command_pad/scripts/clearApp.sh"
-  ],
-  [
     "devicesReboot_left.sh",
     " sh /Users/kim/opencv_project/command_pad/scripts/devicesReboot.sh"
   ],
   [
     "devicesReboot_right.sh",
     "sh /Users/kim/opencv_project/command_pad/scripts/devicesReboot_right.sh"
+  ],
+  [
+    "delete_app",
+    " sh scripts/deleteApp.sh"
   ]
 ]
