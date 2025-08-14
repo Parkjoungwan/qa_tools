@@ -1,4 +1,5 @@
 import sys, os, argparse, time, subprocess, threading, json
+from dotenv import load_dotenv
 from collections import deque
 from datetime import datetime
 from pathlib import Path
@@ -18,9 +19,12 @@ SIMILARITY_THRESHOLD = 0.90
 MAX_REF_IMAGES = 10  # 화면별 참조 이미지 최대 보유 개수
 
 # --- Helper Functions ---
-def get_device_serials(max_devices: int = 1) -> List[str]:
+def get_device_serials() -> List[str]:
+    serial = os.getenv("DEVICE_SERIAL")
+    if serial:
+        return [serial]
     lines = subprocess.check_output(["adb", "devices"]).decode().strip().splitlines()[1:]
-    return [l.split()[0] for l in lines if l.strip().endswith("device")][:max_devices]
+    return [l.split()[0] for l in lines if l.strip().endswith("device")]
 
 def get_device_resolution(serial: str) -> Tuple[int, int]:
     output = subprocess.check_output(["adb", "-s", serial, "shell", "wm", "size"]).decode()
@@ -626,12 +630,17 @@ class DiagramWidget(QWidget):
             print(f"Deleted transition: {from_id} -> {to_id}")
 
 def main():
+    load_dotenv()
     parser = argparse.ArgumentParser(description="UI Flow Recorder using ADB and OpenCV.")
     parser.add_argument("--serial", help="The device serial to connect to.")
     args = parser.parse_args()
-    serials = get_device_serials(2)
-    if len(serials) < 2: print("Two ADB devices required."); sys.exit(1)
-    device_serial = args.serial or serials[1]
+    
+    serials = get_device_serials()
+    if not serials:
+        print("No ADB devices found or DEVICE_SERIAL not set in .env")
+        sys.exit(1)
+    
+    device_serial = args.serial or serials[0]
     print(f"Using device: {device_serial}")
     app = QApplication(sys.argv)
     recorder = FlowRecorder(serial=device_serial)
