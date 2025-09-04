@@ -28,8 +28,9 @@ def main() -> None:
     args = ap.parse_args()
 
     serials = pick_devices(2)
-    if len(serials) < 2:
-        print("⛔ ADB 기기 2대가 필요합니다."); sys.exit(1)
+    if not serials:
+        print("⛔ ADB 기기가 연결되지 않았습니다."); sys.exit(1)
+    print(f"Found {len(serials)} device(s).")
     if args.flip:
         serials.reverse()
     print("🎮 Using devices:", serials)

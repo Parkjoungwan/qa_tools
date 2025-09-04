@@ -1,54 +1,100 @@
-[
-  [
-    "login",
-    "/Users/kim/opencv_project/venv/bin/python /Users/kim/opencv_project/opencv_test_automation/tests/device_multi_run.py login_logout -- 0"
-  ],
-  [
-    "AppStart_left",
-    "sh /Users/kim/opencv_project/command_pad/scripts/start_app_device2.sh"
-  ],
-  [
-    "AppStart_right",
-    "sh /Users/kim/opencv_project/command_pad/scripts/start_app_device1.sh"
-  ],
-  [
-    "rebootApp_left",
-    "sh /Users/kim/opencv_project/command_pad/scripts/rebootApp.sh"
-  ],
-  [
-    "rebootApp_right",
-    "sh /Users/kim/opencv_project/command_pad/scripts/rebootApp_bone.sh"
-  ],
-  [
-    "switch_grade",
-    "sh /Users/kim/opencv_project/command_pad/scripts/switch_grade.sh"
-  ],
-  [
-    "switch_ids",
-    "sh /Users/kim/opencv_project/command_pad/scripts/switch_ids.sh"
-  ],
-  [
-    "clearApp",
-    "sh /Users/kim/opencv_project/command_pad/scripts/clearApp.sh"
-  ],
-  [
-    "clearData_left",
-    "sh /Users/kim/opencv_project/command_pad/scripts/clearData.sh"
-  ],
-  [
-    "clearData_right",
-    "sh /Users/kim/opencv_project/command_pad/scripts/clearData_right.sh"
-  ],
-  [
-    "devicesReboot_left.sh",
-    " sh /Users/kim/opencv_project/command_pad/scripts/devicesReboot.sh"
-  ],
-  [
-    "devicesReboot_right.sh",
-    "sh /Users/kim/opencv_project/command_pad/scripts/devicesReboot_right.sh"
-  ],
-  [
-    "delete_app",
-    " sh scripts/deleteApp.sh"
-  ]
-]
+{
+  "AICANDO": {
+    "config": {
+      "PKG": "com.kyowon.aicando.elem",
+      "DEVICE1": "520068a9435db5d5",
+      "DEVICE2": "52006ed48cddb50f"
+    },
+    "commands": [
+      {
+        "name": "login_D1",
+        "script": "run_opencv_test.sh",
+        "args": "login_logout 1"
+      },
+      {
+        "name": "login_D2",
+        "script": "run_opencv_test.sh",
+        "args": "login_logout 2"
+      },
+      {
+        "name": "rebootApp_1",
+        "script": "rebootApp.sh",
+        "args": "1"
+      },
+      {
+        "name": "rebootApp_2",
+        "script": "rebootApp.sh",
+        "args": "2"
+      },
+      {
+        "name": "clearData_1",
+        "script": "clearData.sh",
+        "args": "1"
+      },
+      {
+        "name": "clearData_2",
+        "script": "clearData.sh",
+        "args": "2"
+      },
+      {
+        "name": "deleteApp_1",
+        "script": "deleteApp.sh",
+        "args": "1"
+      },
+      {
+        "name": "deleteApp_2",
+        "script": "deleteApp.sh",
+        "args": "2"
+      },
+      {
+        "name": "devicesReboot_1",
+        "script": "devicesReboot.sh",
+        "args": "1"
+      },
+      {
+        "name": "devicesReboot_2",
+        "script": "devicesReboot.sh",
+        "args": "2"
+      },
+      {
+        "name": "switch_grade",
+        "script": "switch_grade.sh",
+        "args": ""
+      },
+      {
+        "name": "switch_ids",
+        "script": "switch_ids.sh",
+        "args": ""
+      }
+    ]
+  },
+  "MOONHAERO": {
+    "config": {
+      "PKG": "com.kyowon.literacy",
+      "DEVICE1": "520068a9435db5d5",
+      "DEVICE2": "SERIAL_B_REPLACE_ME"
+    },
+    "commands": [
+      {
+        "name": "rebootApp_1",
+        "script": "rebootApp.sh",
+        "args": "1"
+      },
+      {
+        "name": "clearData_1",
+        "script": "clearData.sh",
+        "args": "1"
+      },
+      {
+        "name": "deleteApp_1",
+        "script": "deleteApp.sh",
+        "args": "1"
+      },
+      {
+        "name": "devicesReboot_1",
+        "script": "devicesReboot.sh",
+        "args": "1"
+      }
+    ]
+  }
+}

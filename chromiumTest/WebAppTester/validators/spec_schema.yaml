@@ -1,0 +1,76 @@
+# spec.yaml 최소 스키마(간략)
+type: object
+required: [meta, env, navigations, fields, actions, success_indicators]
+properties:
+  meta:
+    type: object
+    required: [route]
+    properties:
+      route: { type: string }
+      require_login: { type: boolean }
+  env:
+    type: object
+    required: [keys]
+    properties:
+      keys:
+        type: array
+        items: { type: string }
+  navigations:
+    type: object
+    required: [entry_url, success_url_regex]
+    properties:
+      entry_url: { type: string }
+      success_url_regex: { type: string }
+  fields:
+    type: array
+    items:
+      type: object
+      required: [id, selector, type]
+      properties:
+        id: { type: string }
+        selector: { type: string }
+        type: { type: string }
+        required: { type: boolean }
+        label: { type: string }
+  actions:
+    type: object
+    required: [submit]
+    properties:
+      submit:
+        type: object
+        required: [by]
+        properties:
+          by:
+            type: object
+            required: [type]
+            properties:
+              type: { type: string }      # css | role
+              selector: { type: string }
+              role: { type: string }
+              name: { type: string }
+  success_indicators:
+    type: array
+    items:
+      type: object
+      required: [type]
+      properties:
+        type: { type: string }            # role | text | css
+        role: { type: string }
+        name: { type: string }
+        selector: { type: string }
+  artifacts:
+    type: object
+    properties:
+      screenshots:
+        type: array
+        items:
+          type: object
+          required: [url, filename]
+          properties:
+            url: { type: string }
+            filename: { type: string }
+            fullPage: { type: boolean }
+  timeouts:
+    type: object
+    properties:
+      default_ms: { type: integer }

@@ -1,0 +1,9 @@
+# 공통 규칙 카탈로그(로그인 단계는 URL/가시성만 사용)
+rules:
+  url_success:
+    description: "성공 URL 정규식과 일치할 때까지 대기 후 판정"
+    assert: "expect(page).to_have_url(regex)"
+  visible_indicator:
+    description: "성공 화면의 특정 요소가 사용자에게 보이는지 판정"
+    assert: "expect(locator).to_be_visible()"
+  # 이후 확장: required, maxlength, max, file_extension_allowed 등

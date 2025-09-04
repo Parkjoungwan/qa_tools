@@ -1,33 +1,46 @@
 #!/bin/bash
 
-TARGET_SERIAL="52006ed48cddb50f"
-ADB="adb -s $TARGET_SERIAL"
-
-# 디바이스 연결 확인
-if ! adb devices | grep -q "^$TARGET_SERIAL[[:space:]]device$"; then
-  echo "❌ 대상 디바이스($TARGET_SERIAL)가 연결되어 있지 않습니다."
-  exit 1
+TARGET_SERIALS=()
+if [ "$#" -eq 0 ]; then
+    TARGET_SERIALS+=("$DEVICE1")
+else
+    for arg in "$@"; do
+        if [ "$arg" = "1" ]; then
+            TARGET_SERIALS+=("$DEVICE1")
+        elif [ "$arg" = "2" ]; then
+            TARGET_SERIALS+=("$DEVICE2")
+        fi
+    done
 fi
 
-# 현재 포그라운드 앱 패키지명 추출 (macOS 호환)
-PKG="com.kyowon.aicando.elem"
+TARGET_SERIALS=($(echo "${TARGET_SERIALS[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' '))
 
-echo "🎯 타겟 앱 패키지명: $PKG"
-
-# 앱 강제 종료
-$ADB shell am force-stop "$PKG"
-echo "🛑 앱 종료됨"
-
-# 실행 가능한 액티비티 검색
-ACTIVITY=$($ADB shell dumpsys package "$PKG" | grep -A 20 "android.intent.action.MAIN" \
-  | grep "$PKG" | grep -o "[a-zA-Z0-9_.]*\/[a-zA-Z0-9_.]*" | head -1)
-
-if [ -z "$ACTIVITY" ]; then
-  echo "❌ 실행 가능한 MAIN 액티비티를 찾을 수 없습니다."
-  exit 1
+if [ ${#TARGET_SERIALS[@]} -eq 0 ]; then
+    echo "❌ No valid devices specified. Use '1', '2', or '1 2'."
+    exit 1
 fi
 
-echo "🚀 앱 재실행: $ACTIVITY"
-$ADB shell am start -n "$ACTIVITY"
-echo "✅ 앱 재실행됨"
+for SERIAL in "${TARGET_SERIALS[@]}"; do
+    echo "--- Processing device: $SERIAL ---"
+    ADB="adb -s $SERIAL"
 
+    if ! adb devices | grep -q "^$SERIAL[[:space:]]device$"; then
+      echo "❌ Device not connected: $SERIAL"
+      continue
+    fi
+
+    echo "🎯 Target App: $PKG"
+    $ADB shell am force-stop "$PKG"
+    echo "🛑 App stopped"
+
+    ACTIVITY=$($ADB shell dumpsys package "$PKG" | grep -A 20 "android.intent.action.MAIN" | grep "$PKG" | grep -o "[a-zA-Z0-9_.]*\/[a-zA-Z0-9_.]*" | head -1)
+
+    if [ -z "$ACTIVITY" ]; then
+      echo "❌ Could not find MAIN activity."
+      continue
+    fi
+
+    echo "🚀 Restarting app: $ACTIVITY"
+    $ADB shell am start -n "$ACTIVITY"
+    echo "✅ App restarted on $SERIAL"
+done

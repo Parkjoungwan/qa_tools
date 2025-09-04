@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
-# cmd_buttons.py  – full-width buttons, scroll, process-aware status/lock
-
 import json, subprocess, shlex, tkinter as tk
-from tkinter import ttk, simpledialog, messagebox, Menu # Menu import 추가
+from tkinter import ttk, simpledialog, messagebox, Menu
 from pathlib import Path
-import threading # threading 모듈 추가
+import threading
+import os
+import sys
+import shutil
 
-SAVE_FILE = Path(__file__).parent / "cmd_pad.json"
+
 
 class CmdPad(tk.Tk):
     ROW_VISIBLE = 5
@@ -15,325 +16,261 @@ class CmdPad(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Command Pad")
-        self.commands: list[tuple[str, str]] = []
-        self.btn_widgets: list[ttk.Button] = []
+        self.data: dict[str, dict] = {}
+        self.sheet_widgets: dict[str, dict] = {}
         self.current_proc: subprocess.Popen | None = None
         self._build_ui()
         self._load()
 
-    # ---------- UI ----------
+    # ---------- UI BUILD ----------
     def _build_ui(self):
-        c_height = self.ROW_VISIBLE * self.BTN_HEIGHT + 8
-        self.canvas = tk.Canvas(self, height=c_height, highlightthickness=0)
-        vsb = ttk.Scrollbar(self, orient="vertical",
-                            command=self.canvas.yview)
-        self.inner = ttk.Frame(self.canvas)
-        self.window_id = self.canvas.create_window(
-            (0, 0), window=self.inner, anchor="nw")
-        self.canvas.configure(yscrollcommand=vsb.set)
-        self.canvas.grid(row=0, column=0, sticky="nsew")
-        vsb.grid(row=0, column=1, sticky="ns")
+        self.notebook = ttk.Notebook(self)
+        self.notebook.pack(expand=True, fill="both", padx=5, pady=5)
+        self.notebook.bind("<Button-3>", self._show_sheet_context_menu)
 
-        # sync width & scrollregion
-        self.inner.bind("<Configure>",
-                        lambda _: self.canvas.configure(
-                            scrollregion=self.canvas.bbox("all")))
-        self.canvas.bind("<Configure>",
-                         lambda e: self.canvas.itemconfig(
-                             self.window_id, width=e.width))
+        bottom_frame = ttk.Frame(self)
+        bottom_frame.pack(fill="x", padx=10, pady=(0, 10))
 
-        self._bind_mousewheel()
+        add_cmd_btn = ttk.Button(bottom_frame, text="＋", width=3, command=self._add_cmd)
+        add_cmd_btn.pack(side="right", padx=(5, 0))
+        delete_cmd_btn = ttk.Button(bottom_frame, text="－", width=3, command=self._delete_cmd_dialog)
+        delete_cmd_btn.pack(side="right", padx=(5, 0))
+        reorder_cmd_btn = ttk.Button(bottom_frame, text="⇅", width=3, command=self._reorder_cmd_dialog)
+        reorder_cmd_btn.pack(side="right", padx=(5, 0))
 
-        add_btn = ttk.Button(self, text="＋", width=3, command=self._add_cmd)
-        add_btn.grid(row=1, column=0, sticky="e", padx=10, pady=(6, 10))
-
-        # 삭제 버튼 추가
-        delete_btn = ttk.Button(self, text="－", width=3, command=self._delete_cmd_dialog)
-        delete_btn.grid(row=1, column=0, sticky="w", padx=10, pady=(6, 10))
-
-        # 재정렬 버튼 추가
-        reorder_btn = ttk.Button(self, text="⇅", width=3, command=self._reorder_cmd_dialog)
-        reorder_btn.grid(row=1, column=0, sticky="n", padx=10, pady=(6, 10))
+        add_sheet_btn = ttk.Button(bottom_frame, text="Add Sheet", command=self._add_sheet)
+        add_sheet_btn.pack(side="left")
 
         self.status = ttk.Label(self, text="", anchor="w")
-        self.status.grid(row=2, column=0, columnspan=2,
-                         sticky="we", padx=10, pady=(0, 8))
+        self.status.pack(side="bottom", fill="x", padx=10, pady=(0, 8))
 
-        self.columnconfigure(0, weight=1)
-        self.rowconfigure(0, weight=1)
+    def _create_sheet_ui(self, sheet_name: str) -> dict:
+        sheet_frame = ttk.Frame(self.notebook)
+        self.notebook.add(sheet_frame, text=sheet_name)
 
-    def _bind_mousewheel(self):
-        self.canvas.bind_all("<MouseWheel>",
-                             self._on_mousewheel)          # Win/mac
-        self.canvas.bind_all("<Button-4>", self._on_mousewheel)   # Linux
-        self.canvas.bind_all("<Button-5>", self._on_mousewheel)
+        canvas = tk.Canvas(sheet_frame, height=self.ROW_VISIBLE * self.BTN_HEIGHT + 8, highlightthickness=0)
+        vsb = ttk.Scrollbar(sheet_frame, orient="vertical", command=canvas.yview)
+        inner_frame = ttk.Frame(canvas)
+        inner_frame.columnconfigure(0, weight=1)
 
-    def _on_mousewheel(self, ev):
-        if ev.num == 4 or ev.delta > 0:
-            self.canvas.yview_scroll(-1, "units")
-        elif ev.num == 5 or ev.delta < 0:
-            self.canvas.yview_scroll(1, "units")
+        window_id = canvas.create_window((0, 0), window=inner_frame, anchor="nw")
+        canvas.configure(yscrollcommand=vsb.set)
+        canvas.pack(side="left", fill="both", expand=True)
+        vsb.pack(side="right", fill="y")
 
-    # ---------- command list ----------
-    def _add_cmd(self):
-        name = simpledialog.askstring("Name", "Button name:")
-        if not name:
-            return
-        cmd = simpledialog.askstring("Command",
-                                     f"Shell command for '{name}':")
-        if not cmd:
-            return
-        self.commands.append((name, cmd))
-        self._make_button(name, cmd)
-        self._save()
+        def _on_configure(event):
+            canvas.itemconfig(window_id, width=event.width)
 
-    def _make_button(self, name: str, cmd: str):
-        btn = ttk.Button(self.inner, text=name,
-                         command=lambda n=name, c=cmd: self._run(n, c))
-        btn.pack(fill="x", padx=16, pady=4)
-        self.btn_widgets.append(btn)
-        # 우클릭 이벤트 바인딩
-        btn.bind("<Button-3>", lambda event, b=btn, n=name, c=cmd: self._show_context_menu(event, b, n, c))
+        inner_frame.bind("<Configure>", _on_configure)
 
-    def _show_context_menu(self, event, button, name, cmd):
-        context_menu = Menu(self, tearoff=0)
-        context_menu.add_command(label="편집", command=lambda: self._edit_cmd(button, name, cmd)) # 편집 메뉴 추가
-        context_menu.add_command(label="제거", command=lambda: self._remove_cmd(button, name, cmd))
-        context_menu.post(event.x_root, event.y_root)
+        # This handler will be passed to child widgets
+        def _on_mousewheel(event):
+            # Platform-specific scroll handling
+            if event.num == 5 or event.delta < 0:
+                canvas.yview_scroll(1, "units")
+            elif event.num == 4 or event.delta > 0:
+                canvas.yview_scroll(-1, "units")
 
-    def _edit_cmd(self, button, old_name, old_cmd):
-        new_name = simpledialog.askstring("이름 편집", "새 버튼 이름:", initialvalue=old_name)
-        if new_name is None: # 취소
-            return
-        new_cmd = simpledialog.askstring("명령어 편집", f"'{new_name}'에 대한 새 셸 명령어:", initialvalue=old_cmd)
-        if new_cmd is None: # 취소
-            return
+        # Bind scrolling to the main scrollable areas
+        canvas.bind("<MouseWheel>", _on_mousewheel)
+        inner_frame.bind("<MouseWheel>", _on_mousewheel)
 
-        if new_name == old_name and new_cmd == old_cmd:
-            messagebox.showinfo("정보", "변경 사항이 없습니다.")
-            return
+        return {"frame": sheet_frame, "canvas": canvas, "inner": inner_frame, "buttons": [], "scroll_handler": _on_mousewheel}
 
-        # self.commands 리스트에서 기존 명령어 제거 후 새 명령어 추가
-        # 인덱스를 찾아서 수정하는 것이 더 효율적이지만, 여기서는 간단하게 제거 후 추가
+    def _make_button(self, sheet_name: str, cmd_obj: dict):
+        sheet_ui = self.sheet_widgets[sheet_name]
+        row_index = len(sheet_ui["buttons"])
+
+        # 내부 프레임의 첫 번째 컬럼이 확장 가능하도록 설정
+        sheet_ui["inner"].grid_columnconfigure(0, weight=1)
+
+        # 버튼 생성
+        btn = ttk.Button(
+            sheet_ui["inner"],
+            text=cmd_obj["name"],
+            command=lambda c=cmd_obj: self._run(c)
+        )
+        # sticky="ew"로 가로 전체 확장, padx/pady는 여백
+        btn.grid(row=row_index, column=0, sticky="ew", padx=5, pady=4)
+
+        # 버튼 레퍼런스 보관 (상태 토글 & 나중에 destroy 위해 필요)
+        sheet_ui["buttons"].append(btn)
+
+        # 마우스 휠 스크롤도 버튼 위에서 작동하도록 연결
+        scroll_handler = sheet_ui.get("scroll_handler")
+        if scroll_handler:
+            btn.bind("<MouseWheel>", scroll_handler)
+
+    # ---------- SHEETS & CONFIG ----------
+    def _add_sheet(self):
+        sheet_name = simpledialog.askstring("New Sheet", "Enter sheet name:")
+        if sheet_name and sheet_name not in self.data:
+            self.data[sheet_name] = {
+                "config": {"PKG": "com.example.app", "DEVICE1": "SERIAL1", "DEVICE2": "SERIAL2"},
+                "commands": []
+            }
+            self.sheet_widgets[sheet_name] = self._create_sheet_ui(sheet_name)
+            self.notebook.select(self.sheet_widgets[sheet_name]["frame"])
+            self._save()
+        elif sheet_name:
+            messagebox.showwarning("Exists", f"Sheet '{sheet_name}' already exists.")
+
+    def _show_sheet_context_menu(self, event):
         try:
-            idx = self.commands.index((old_name, old_cmd))
-            self.commands[idx] = (new_name, new_cmd)
-        except ValueError:
-            # 만약 찾지 못하면 (예: 이미 삭제되었거나 변경되었을 경우)
-            messagebox.showerror("오류", "명령어를 찾을 수 없습니다. 새로고침 후 다시 시도해주세요.")
-            return
+            if "label" in self.notebook.identify(event.x, event.y):
+                sheet_name = self.notebook.tab(self.notebook.select(), "text")
+                context_menu = Menu(self, tearoff=0)
+                context_menu.add_command(label="Edit Config", command=lambda: self._edit_config(sheet_name))
+                context_menu.add_command(label=f"Delete '{sheet_name}' Sheet", command=lambda: self._delete_sheet(sheet_name))
+                context_menu.post(event.x_root, event.y_root)
+        except tk.TclError: pass
 
-        # GUI 버튼 업데이트
-        button.config(text=new_name) # 버튼 텍스트만 변경
+    def _edit_config(self, sheet_name):
+        config = self.data[sheet_name].get("config", {})
+        new_config_str = simpledialog.askstring("Edit Config", f"Editing config for {sheet_name}:", initialvalue=json.dumps(config, indent=2))
+        if new_config_str:
+            try:
+                new_config = json.loads(new_config_str)
+                self.data[sheet_name]["config"] = new_config
+                self._save()
+                messagebox.showinfo("Success", "Config updated successfully.")
+            except json.JSONDecodeError:
+                messagebox.showerror("Error", "Invalid JSON format.")
 
-        # 파일 저장
+    def _delete_sheet(self, sheet_name):
+        if messagebox.askyesno("Delete Sheet", f"Are you sure you want to delete '{sheet_name}'?"):
+            self.notebook.forget(self.sheet_widgets[sheet_name]["frame"])
+            del self.data[sheet_name]
+            del self.sheet_widgets[sheet_name]
+            self._save()
+
+    def get_active_sheet_name(self) -> str | None: 
+        try: return self.notebook.tab(self.notebook.select(), "text")
+        except tk.TclError: return None
+
+    # ---------- COMMAND MANAGEMENT ----------
+    def _refresh_sheet(self, sheet_name):
+        sheet_ui = self.sheet_widgets.get(sheet_name)
+        if not sheet_ui: return
+        for btn in sheet_ui["buttons"]:
+            btn.destroy()
+        sheet_ui["buttons"].clear()
+        for cmd_obj in self.data[sheet_name].get("commands", []):
+            self._make_button(sheet_name, cmd_obj)
+        sheet_ui["canvas"].update_idletasks()
+        sheet_ui["canvas"].config(scrollregion=sheet_ui["canvas"].bbox("all"))
+
+    def _add_cmd(self):
+        active_sheet = self.get_active_sheet_name()
+        if not active_sheet: return
+        name = simpledialog.askstring("Name", "Button name:")
+        if not name: return
+        script = simpledialog.askstring("Script", "Script name (e.g., rebootApp.sh):")
+        if not script: return
+        args = simpledialog.askstring("Args", "Arguments (e.g., 1 2):", initialvalue="1")
+        new_cmd = {"name": name, "script": script, "args": args or ""}
+        self.data[active_sheet]["commands"].append(new_cmd)
+        self._refresh_sheet(active_sheet)
         self._save()
-        self.status.config(text=f"'{old_name}' 명령어가 '{new_name}'으로 수정 완료")
-        self.after(3000, lambda: self.status.config(text=""))
 
     def _delete_cmd_dialog(self):
-        if not self.commands:
-            messagebox.showinfo("정보", "삭제할 명령어가 없습니다.")
-            return
-
-        dialog = tk.Toplevel(self)
-        dialog.title("명령어 삭제")
-        dialog.transient(self) # 부모 창 위에 표시
-        dialog.grab_set()      # 다른 창 조작 방지
-
-        listbox_frame = ttk.Frame(dialog)
-        listbox_frame.pack(padx=10, pady=10, fill="both", expand=True)
-
-        scrollbar = ttk.Scrollbar(listbox_frame, orient="vertical")
-        listbox = tk.Listbox(listbox_frame, yscrollcommand=scrollbar.set, selectmode="single")
-        scrollbar.config(command=listbox.yview)
-
-        listbox.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
-
-        for name, _ in self.commands:
-            listbox.insert(tk.END, name)
-
-        button_frame = ttk.Frame(dialog)
-        button_frame.pack(pady=5)
-
-        delete_btn = ttk.Button(button_frame, text="삭제", command=lambda: self._perform_delete(listbox, dialog))
-        delete_btn.pack(side="left", padx=5)
-
-        cancel_btn = ttk.Button(button_frame, text="취소", command=dialog.destroy)
-        cancel_btn.pack(side="left", padx=5)
-
-        self.wait_window(dialog) # 팝업 창이 닫힐 때까지 대기
-
-    def _perform_delete(self, listbox, dialog):
-        selected_indices = listbox.curselection()
-        if not selected_indices:
-            messagebox.showinfo("정보", "삭제할 명령어를 선택해주세요.")
-            return
-
-        idx_to_delete = selected_indices[0]
-        name_to_delete, cmd_to_delete = self.commands[idx_to_delete]
-
-        if messagebox.askyesno("확인", f"'{name_to_delete}' 명령어를 정말 삭제하시겠습니까?"):
-            # self.commands 리스트에서 제거
-            self.commands.pop(idx_to_delete)
-
-            # GUI에서 버튼 제거 (기존 버튼 위젯을 찾아서 제거)
-            # 이 부분은 self.btn_widgets 리스트와 self.commands 리스트의 동기화가 필요
-            # 가장 간단한 방법은 모든 버튼을 다시 그리는 것
-            for btn in self.btn_widgets:
-                btn.destroy()
-            self.btn_widgets.clear()
-            for name, cmd in self.commands:
-                self._make_button(name, cmd)
-
-            # 파일 저장
-            self._save()
-            self.status.config(text=f"'{name_to_delete}' 명령어 제거 완료")
-            self.after(3000, lambda: self.status.config(text=""))
-            dialog.destroy()
-        else:
-            dialog.destroy()
+        messagebox.showinfo("Info", "This feature is under development. Please edit cmd_pad.json directly.")
 
     def _reorder_cmd_dialog(self):
-        if not self.commands:
-            messagebox.showinfo("정보", "재정렬할 명령어가 없습니다.")
+        messagebox.showinfo("Info", "This feature is under development. Please edit cmd_pad.json directly.")
+
+    # ---------- RUN / MONITOR ----------
+    def _run(self, cmd_obj: dict):
+        if self.current_proc and self.current_proc.poll() is None: messagebox.showwarning("Busy", "Another command is running."); return
+
+        sheet_name = self.get_active_sheet_name()
+        if not sheet_name: return
+
+        config = self.data[sheet_name].get("config", {})
+        env = os.environ.copy()
+        
+        global_config = self.data.get("global_config", {})
+        adb_path = global_config.get("ADB_PATH")
+        if adb_path and Path(adb_path).exists():
+            env["PATH"] = f"{Path(adb_path).parent}{os.pathsep}{env.get('PATH', '')}"
+
+        env.update(config)
+
+        script_path = SCRIPTS_DIR / cmd_obj["script"]
+        if not script_path.exists():
+            messagebox.showerror("Error", f"Script not found: {script_path}")
             return
 
-        dialog = tk.Toplevel(self)
-        dialog.title("명령어 재정렬")
-        dialog.transient(self)
-        dialog.grab_set()
+        command_line = ["sh", str(script_path)] + shlex.split(cmd_obj.get("args", ""))
+        
+        for sheet_ui in self.sheet_widgets.values():
+            for btn in sheet_ui["buttons"]:
+                btn.state(["disabled"])
+        self.status.config(text=f"▶ '{cmd_obj['name']}' running…")
 
-        listbox_frame = ttk.Frame(dialog)
-        listbox_frame.pack(padx=10, pady=10, fill="both", expand=True)
-
-        scrollbar = ttk.Scrollbar(listbox_frame, orient="vertical")
-        listbox = tk.Listbox(listbox_frame, yscrollcommand=scrollbar.set, selectmode="single")
-        scrollbar.config(command=listbox.yview)
-
-        listbox.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
-
-        for name, _ in self.commands:
-            listbox.insert(tk.END, name)
-
-        button_frame = ttk.Frame(dialog)
-        button_frame.pack(pady=5)
-
-        up_btn = ttk.Button(button_frame, text="위로 이동", command=lambda: self._move_cmd(listbox, -1))
-        up_btn.pack(side="left", padx=5)
-
-        down_btn = ttk.Button(button_frame, text="아래로 이동", command=lambda: self._move_cmd(listbox, 1))
-        down_btn.pack(side="left", padx=5)
-
-        ok_btn = ttk.Button(button_frame, text="확인", command=dialog.destroy)
-        ok_btn.pack(side="left", padx=5)
-
-        self.wait_window(dialog)
-
-    def _move_cmd(self, listbox, direction):
-        selected_indices = listbox.curselection()
-        if not selected_indices:
-            return
-
-        idx = selected_indices[0]
-        new_idx = idx + direction
-
-        if 0 <= new_idx < len(self.commands):
-            # self.commands 리스트에서 순서 변경
-            self.commands[idx], self.commands[new_idx] = self.commands[new_idx], self.commands[idx]
-
-            # GUI 버튼 다시 그리기
-            for btn in self.btn_widgets:
-                btn.destroy()
-            self.btn_widgets.clear()
-            for name, cmd in self.commands:
-                self._make_button(name, cmd)
-
-            # Listbox 업데이트 및 선택 유지
-            listbox.delete(0, tk.END)
-            for name, _ in self.commands:
-                listbox.insert(tk.END, name)
-            listbox.selection_set(new_idx)
-            listbox.see(new_idx)
-
-            self._save()
-
-            # Update canvas scroll region after moving command
-            self.canvas.update_idletasks()
-            self.canvas.config(scrollregion=self.canvas.bbox("all"))
-
-    # ---------- run / monitor ----------
-    def _run(self, name: str, cmd: str):
-        if self.current_proc and self.current_proc.poll() is None:
-            messagebox.showwarning("실행 중", "이미 다른 명령어가 실행 중입니다.")
-            return
-
-        for btn in self.btn_widgets:
-            btn.state(["disabled"])
-        self.status.config(text=f"▶ '{name}' 실행 중…")
-
-        thread = threading.Thread(target=self._execute_command_in_thread,
-                                  args=(name, cmd), daemon=True)
+        thread = threading.Thread(target=self._execute_command_in_thread, args=(cmd_obj, command_line, env), daemon=True)
         thread.start()
 
-    def _execute_command_in_thread(self, name: str, cmd: str):
+    def _execute_command_in_thread(self, cmd_obj: dict, command_line: list, env: dict):
         try:
-            self.current_proc = subprocess.Popen(
-                shlex.split(cmd),
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                encoding='utf-8',
-                errors='replace'
-            )
+            self.current_proc = subprocess.Popen(command_line, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, encoding='utf-8', errors='replace', env=env)
             stdout, stderr = self.current_proc.communicate()
-            return_code = self.current_proc.returncode
-            self.after(0, self._on_command_finish, name, return_code, stdout, stderr)
-        except FileNotFoundError:
-            self.after(0, self._on_command_error, f"명령어를 찾을 수 없습니다: {cmd}")
+            self.after(0, self._on_command_finish, cmd_obj, self.current_proc.returncode, stdout, stderr)
         except Exception as e:
             self.after(0, self._on_command_error, str(e))
         finally:
             self.current_proc = None
 
-    def _on_command_finish(self, name: str, return_code: int, stdout: str, stderr: str):
-        for btn in self.btn_widgets:
-            btn.state(["!disabled"])
-
-        output_msg = f"'{name}' 실행 완료 (코드: {return_code})\n"
-        if stdout:
-            output_msg += f"Stdout:\n{stdout}\n"
-        if stderr:
-            output_msg += f"Stderr:\n{stderr}\n"
+    def _on_command_finish(self, cmd_obj: dict, return_code: int, stdout: str, stderr: str):
+        for sheet_ui in self.sheet_widgets.values():
+            for btn in sheet_ui["buttons"]:
+                btn.state(["!disabled"])
+        output_msg = f"'{cmd_obj['name']}' finished (code: {return_code})"
         self.status.config(text=output_msg)
+        if stdout or stderr:
+            details = f'''Stdout:\n{stdout}\n\nStderr:\n{stderr}'''
+            messagebox.showinfo(f"'{cmd_obj['name']}' Output", details)
         self.after(5000, lambda: self.status.config(text=""))
 
     def _on_command_error(self, error_message: str):
-        for btn in self.btn_widgets:
-            btn.state(["!disabled"])
-        self.status.config(text=f"오류: {error_message}")
-        messagebox.showerror("오류", error_message)
-        self.after(5000, lambda: self.status.config(text=""))
+        for sheet_ui in self.sheet_widgets.values():
+            for btn in sheet_ui["buttons"]:
+                btn.state(["!disabled"])
+        self.status.config(text=f"Error: {error_message}")
+        messagebox.showerror("Error", error_message)
 
-    # ---------- persistence ----------
+    # ---------- PERSISTENCE ----------
     def _save(self):
-        try:
-            SAVE_FILE.write_text(json.dumps(self.commands, indent=2))
-        except Exception as e:
-            messagebox.showwarning("Warn", f"Could not save list: {e}")
+        try: SAVE_FILE.write_text(json.dumps(self.data, indent=2, ensure_ascii=False))
+        except Exception as e: messagebox.showwarning("Warn", f"Could not save: {e}")
 
     def _load(self):
+        # Set base directory for bundled app support
+        if getattr(sys, 'frozen', False):
+            base_dir = Path(sys.executable).parent
+        else:
+            base_dir = Path(__file__).parent
+        
+        global SAVE_FILE, SCRIPTS_DIR
+        SAVE_FILE = base_dir / "cmd_pad.json"
+        SCRIPTS_DIR = base_dir / "scripts"
+
         if not SAVE_FILE.exists():
+            self.data = {}
+            self._add_sheet()
             return
         try:
-            self.commands = json.loads(SAVE_FILE.read_text())
-            for name, cmd in self.commands:
-                self._make_button(name, cmd)
-        except Exception as e:
-            messagebox.showwarning("Warn", f"Could not read list: {e}")
-
+            self.data = json.loads(SAVE_FILE.read_text())
+            if not self.data:
+                self._add_sheet()
+                return
+            for sheet_name in self.data:
+                self.sheet_widgets[sheet_name] = self._create_sheet_ui(sheet_name)
+                self._refresh_sheet(sheet_name)
+        except Exception as e: 
+            messagebox.showwarning("Warn", f"Could not read data: {e}")
+            self.data = {}
+            self._add_sheet()
 
 if __name__ == "__main__":
     CmdPad().mainloop()

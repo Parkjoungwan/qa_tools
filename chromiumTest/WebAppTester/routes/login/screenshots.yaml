@@ -1,0 +1,8 @@
+# WebAppTester/routes/login/screenshots.yaml
+pages:
+  - url: "/login"
+    fullPage: false
+    filename: "login_viewport.png"
+  - url: "/crc/list"
+    fullPage: true
+    filename: "crc_list_full.png"

@@ -1,19 +1,34 @@
 #!/bin/bash
 
-TARGET_SERIAL="52006ed48cddb50f"
-
-# 대상 디바이스가 연결되어 있는지 확인
-if ! adb devices | grep -q "^$TARGET_SERIAL[[:space:]]device$"; then
-  echo "❌ 대상 디바이스($TARGET_SERIAL)가 연결되어 있지 않습니다."
-  exit 1
+TARGET_SERIALS=()
+if [ "$#" -eq 0 ]; then
+    TARGET_SERIALS+=("$DEVICE1")
+else
+    for arg in "$@"; do
+        if [ "$arg" = "1" ]; then
+            TARGET_SERIALS+=("$DEVICE1")
+        elif [ "$arg" = "2" ]; then
+            TARGET_SERIALS+=("$DEVICE2")
+        fi
+    done
 fi
 
-ADB="adb -s $TARGET_SERIAL"
+TARGET_SERIALS=($(echo "${TARGET_SERIALS[@]}" | tr ' ' '\n' | sort -u | tr '\n' ' ' ))
 
-# 재부팅 명령
-echo "🔄 기기 재시작 중..."
-$ADB reboot
+if [ ${#TARGET_SERIALS[@]} -eq 0 ]; then
+    echo "❌ No valid devices specified. Use '1', '2', or '1 2'."
+    exit 1
+fi
 
-# 재부팅 명령은 비동기이므로, 이후 명령은 실행되지 않음
-# 필요하다면, 재부팅 이후 adb 재접속을 기다리는 로직 추가 가능
+for SERIAL in "${TARGET_SERIALS[@]}"; do
+    echo "--- Processing device: $SERIAL ---"
+    ADB="adb -s $SERIAL"
 
+    if ! adb devices | grep -q "^$SERIAL[[:space:]]device$"; then
+      echo "❌ Device not connected: $SERIAL"
+      continue
+    fi
+
+    echo "🔄 Rebooting device..."
+    $ADB reboot
+done

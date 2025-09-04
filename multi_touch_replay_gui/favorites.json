@@ -1,120 +1,267 @@
 [
   {
-    "name": "pass_problem",
+    "name": "2setStudyPass2",
     "queue": [
       [
         "log",
-        "/Users/kim/opencv_project/adb_mirror/log_save/pass_problem.log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/2setstudyPass_2.log",
         1,
         1.0
       ]
     ]
   },
   {
-    "name": "pass_ai_math",
+    "name": "admin_toggle3",
     "queue": [
       [
         "log",
-        "/Users/kim/opencv_project/adb_mirror/log_save/pass_problem_ai_math.log",
+        "/Users/kim/opencv_project/adb_mirror/log/adb_20250820_145258.log",
         1,
         1.0
       ]
     ]
   },
   {
-    "name": "check_activity",
+    "name": "pass_new",
     "queue": [
       [
         "log",
-        "/Users/kim/opencv_project/adb_mirror/log_save/check_activity.log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/passnew0827.log",
         1,
         1.0
       ]
     ]
   },
   {
-    "name": "improvement_problem_error",
+    "name": "ai_math_pass_10",
     "queue": [
       [
         "log",
-        "/Users/kim/opencv_project/adb_mirror/log_save/improve_problem_move.log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/ai_math_pass.log",
+        10,
+        1.0
+      ]
+    ]
+  },
+  {
+    "name": "ai_math_re_study",
+    "queue": [
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/open_matchingmath_popup.log",
+        1,
+        1.0
+      ],
+      [
+        "gap",
+        1.0
+      ],
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/open_matchingmath.log",
+        1,
+        1.0
+      ],
+      [
+        "gap",
+        3.0
+      ],
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/ai_math_pass.log",
+        10,
+        1.0
+      ],
+      [
+        "gap",
+        3.0
+      ],
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/close_aimatchingmath_close_pop_up.log",
         1,
         1.0
       ]
     ]
   },
   {
-    "name": "admin_toggle",
+    "name": "ai_math_test",
     "queue": [
       [
         "log",
-        "/Users/kim/opencv_project/adb_mirror/log_save/admin_toggle.log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/mv_aimath.log",
+        1,
+        1.0
+      ],
+      [
+        "gap",
+        1.0
+      ],
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/open_matchingmath_popup.log",
+        1,
+        1.0
+      ],
+      [
+        "gap",
+        1.0
+      ],
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/open_matchingmath.log",
+        1,
+        1.0
+      ],
+      [
+        "gap",
+        3.0
+      ],
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/ai_math_pass.log",
+        10,
+        1.0
+      ],
+      [
+        "gap",
+        3.0
+      ],
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/close_aimatchingmath_close_pop_up.log",
+        1,
+        1.0
+      ],
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/mv_aimath_topmath.log",
+        1,
+        1.0
+      ],
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/open_close_topmath.log",
         1,
         1.0
       ]
     ]
   },
   {
-    "name": "2-2",
+    "name": "unitmater_note_test",
     "queue": [
       [
         "log",
-        "/Users/kim/opencv_project/adb_mirror/log_save/2_2_musicCheck.log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/mv_unitmaster.log",
+        1,
+        1.0
+      ],
+      [
+        "gap",
+        1.0
+      ],
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/open_conceptNote.log",
+        1,
+        1.0
+      ],
+      [
+        "gap",
+        2.0
+      ],
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/open_conceptVideo.log",
+        1,
+        2.0
+      ],
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/close_conceptVideo.log",
+        1,
+        1.0
+      ],
+      [
+        "gap",
+        1.0
+      ],
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/close_conceptNote.log",
         1,
         1.0
       ]
     ]
   },
   {
-    "name": "2",
+    "name": "unitmaster_test",
     "queue": [
       [
         "log",
-        "/Users/kim/opencv_project/adb_mirror/log_save/check2.log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/mv_unitmaster.log",
         1,
         1.0
-      ]
-    ]
-  },
-  {
-    "name": "3",
-    "queue": [
+      ],
+      [
+        "gap",
+        1.0
+      ],
       [
         "log",
-        "/Users/kim/opencv_project/adb_mirror/log/adb_20250808_135337.log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/open_conceptNote.log",
         1,
         1.0
-      ]
-    ]
-  },
-  {
-    "name": "3-3",
-    "queue": [
+      ],
+      [
+        "gap",
+        2.0
+      ],
       [
         "log",
-        "/Users/kim/opencv_project/adb_mirror/log/adb_20250808_143611.log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/open_conceptVideo.log",
+        1,
+        2.0
+      ],
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/close_conceptVideo.log",
         1,
         1.0
-      ]
-    ]
-  },
-  {
-    "name": "2setProblemPass",
-    "queue": [
+      ],
+      [
+        "gap",
+        1.0
+      ],
       [
         "log",
-        "/Users/kim/opencv_project/adb_mirror/log_save/2setStudyPass.log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/close_conceptNote.log",
         1,
         1.0
-      ]
-    ]
-  },
-  {
-    "name": "1setProblemPass",
-    "queue": [
+      ],
+      [
+        "gap",
+        1.0
+      ],
       [
         "log",
-        "/Users/kim/opencv_project/adb_mirror/log_save/1setProblemPass.log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/mv_unitmater_unitEval.log",
+        1,
+        1.0
+      ],
+      [
+        "gap",
+        1.0
+      ],
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/open_unitEval.log",
+        1,
+        1.0
+      ],
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/close_unitEval.log",
         1,
         1.0
       ]

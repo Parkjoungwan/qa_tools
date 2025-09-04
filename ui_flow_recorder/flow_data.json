@@ -2,270 +2,189 @@
     "screens": {
         "1": {
             "name": "main_ten",
-            "pos": [
-                539,
-                235
-            ],
             "paths": [
-                "/Users/kim/opencv_project/ui_flow_recorder/images/1_main_ten.png",
-                "/Users/kim/opencv_project/ui_flow_recorder/images/1_main_ten_20250805_144553_661423.png",
-                "/Users/kim/opencv_project/ui_flow_recorder/images/1_main_ten_20250806_112027_285894.png",
-                "/Users/kim/opencv_project/ui_flow_recorder/images/1_main_ten_20250813_091520_985058.png",
-                "/Users/kim/opencv_project/ui_flow_recorder/images/1_main_ten_20250813_142319_829508.png",
-                "/Users/kim/opencv_project/ui_flow_recorder/images/1_main_ten_20250813_145504_036913.png",
-                "/Users/kim/opencv_project/ui_flow_recorder/images/1_main_ten_20250813_150403_940461.png",
-                "/Users/kim/opencv_project/ui_flow_recorder/images/1_main_ten_20250813_152319_197834.png"
+                "/Users/kim/opencv_project/ui_flow_recorder/images/1_main_ten_20250825_130329_871126.png",
+                "/Users/kim/opencv_project/ui_flow_recorder/images/1_main_ten_20250826_090429_937913.png"
+            ],
+            "pos": [
+                -91,
+                1486
             ]
         },
         "2": {
-            "name": "unit_study",
-            "pos": [
-                1229,
-                153
-            ],
+            "name": "subject_unit",
             "paths": [
-                "/Users/kim/opencv_project/ui_flow_recorder/images/2_unit_study.png"
+                "/Users/kim/opencv_project/ui_flow_recorder/images/2_subject_unit_20250825_130345_364967.png"
+            ],
+            "pos": [
+                563,
+                1265
             ]
         },
         "3": {
             "name": "unit_master",
-            "pos": [
-                1229,
-                667
-            ],
             "paths": [
-                "/Users/kim/opencv_project/ui_flow_recorder/images/3_unit_master.png"
+                "/Users/kim/opencv_project/ui_flow_recorder/images/3_unit_master_20250825_130358_973862.png"
+            ],
+            "pos": [
+                635,
+                1359
             ]
         },
         "4": {
             "name": "math_study",
-            "pos": [
-                1227,
-                513
-            ],
             "paths": [
-                "/Users/kim/opencv_project/ui_flow_recorder/images/4_math_study.png"
+                "/Users/kim/opencv_project/ui_flow_recorder/images/4_math_study_20250825_130408_524551.png"
+            ],
+            "pos": [
+                695,
+                1462
             ]
         },
         "5": {
-            "name": "nation_exam",
-            "pos": [
-                1228,
-                367
-            ],
+            "name": "top_math",
             "paths": [
-                "/Users/kim/opencv_project/ui_flow_recorder/images/5_nation_exam.png"
+                "/Users/kim/opencv_project/ui_flow_recorder/images/5_top_math_20250825_130420_662230.png"
+            ],
+            "pos": [
+                900,
+                1464
             ]
         },
         "6": {
-            "name": "knowledge_land",
-            "pos": [
-                1228,
-                223
-            ],
+            "name": "national_exam",
             "paths": [
-                "/Users/kim/opencv_project/ui_flow_recorder/images/6_knowledge_land.png",
-                "/Users/kim/opencv_project/ui_flow_recorder/images/6_knowledge_land_20250805_142852_353734.png"
+                "/Users/kim/opencv_project/ui_flow_recorder/images/6_national_exam_20250825_130442_332929.png",
+                "/Users/kim/opencv_project/ui_flow_recorder/images/6_national_exam_20250826_090527_260420.png"
+            ],
+            "pos": [
+                668,
+                1566
             ]
         },
         "7": {
-            "name": "ai_report",
-            "pos": [
-                1228,
-                297
-            ],
+            "name": "knowledgeLand",
             "paths": [
-                "/Users/kim/opencv_project/ui_flow_recorder/images/7_ai_report.png",
-                "/Users/kim/opencv_project/ui_flow_recorder/images/7_ai_report_20250805_143110_218290.png"
+                "/Users/kim/opencv_project/ui_flow_recorder/images/7_knowledgeLand_20250825_130459_252543.png",
+                "/Users/kim/opencv_project/ui_flow_recorder/images/7_knowledgeLand_20250825_130715_380179.png"
+            ],
+            "pos": [
+                607,
+                1670
+            ]
+        },
+        "8": {
+            "name": "ai_report",
+            "paths": [
+                "/Users/kim/opencv_project/ui_flow_recorder/images/8_ai_report_20250825_130524_908917.png"
+            ],
+            "pos": [
+                517,
+                1766
+            ]
+        },
+        "9": {
+            "name": "main_nol",
+            "paths": [
+                "/Users/kim/opencv_project/ui_flow_recorder/images/9_main_nol_20250825_130553_236591.png"
+            ],
+            "pos": [
+                -90,
+                1673
+            ]
+        },
+        "10": {
+            "name": "main_menu",
+            "paths": [
+                "/Users/kim/opencv_project/ui_flow_recorder/images/10_main_menu_20250825_130610_964253.png"
+            ],
+            "pos": [
+                161,
+                1776
+            ]
+        },
+        "11": {
+            "name": "iclass",
+            "paths": [
+                "/Users/kim/opencv_project/ui_flow_recorder/images/11_iclass_20250825_130639_620137.png",
+                "/Users/kim/opencv_project/ui_flow_recorder/images/11_iclass_20250825_130653_445527.png",
+                "/Users/kim/opencv_project/ui_flow_recorder/images/11_iclass_20250825_132117_611524.png"
+            ],
+            "pos": [
+                162,
+                1292
+            ]
+        },
+        "12": {
+            "name": "main_dropdown_menu",
+            "paths": [
+                "/Users/kim/opencv_project/ui_flow_recorder/images/12_main_dropdown_menu_20250825_131015_588390.png"
+            ],
+            "pos": [
+                -238,
+                1774
+            ]
+        },
+        "13": {
+            "name": "main_knowledge1",
+            "paths": [
+                "/Users/kim/opencv_project/ui_flow_recorder/images/13_main_knowledge1_20250825_131558_132108.png"
+            ],
+            "pos": [
+                -341,
+                1393
+            ]
+        },
+        "14": {
+            "name": "main_knowledge2",
+            "paths": [
+                "/Users/kim/opencv_project/ui_flow_recorder/images/14_main_knowledge2_20250825_131622_015267.png"
+            ],
+            "pos": [
+                -370,
+                1450
+            ]
+        },
+        "15": {
+            "name": "main_knowledge3",
+            "paths": [
+                "/Users/kim/opencv_project/ui_flow_recorder/images/15_main_knowledge3_20250825_131640_651930.png"
+            ],
+            "pos": [
+                -388,
+                1509
             ]
         },
         "16": {
-            "name": "math_study_top",
-            "pos": [
-                1228,
-                596
-            ],
+            "name": "main_knowledge4",
             "paths": [
-                "/Users/kim/opencv_project/ui_flow_recorder/images/16_math_study_top.png",
-                "/Users/kim/opencv_project/ui_flow_recorder/images/16_math_study_top_20250805_144239_725343.png"
+                "/Users/kim/opencv_project/ui_flow_recorder/images/16_main_knowledge4_20250825_131829_811338.png"
+            ],
+            "pos": [
+                -373,
+                1567
             ]
         },
         "17": {
-            "name": "nation_exam_math",
-            "pos": [
-                1228,
-                445
-            ],
+            "name": "main_knowledge5",
             "paths": [
-                "/Users/kim/opencv_project/ui_flow_recorder/images/17_nation_exam_math.png"
+                "/Users/kim/opencv_project/ui_flow_recorder/images/17_main_knowledge5_20250825_131910_770717.png",
+                "/Users/kim/opencv_project/ui_flow_recorder/images/17_main_knowledge5_20250825_131928_460027.png"
+            ],
+            "pos": [
+                -342,
+                1633
             ]
         },
         "18": {
-            "name": "main_nol",
-            "pos": [
-                723,
-                401
-            ],
+            "name": "pangpang_nol",
             "paths": [
-                "/Users/kim/opencv_project/ui_flow_recorder/images/18_main_nol.png",
-                "/Users/kim/opencv_project/ui_flow_recorder/images/18_main_nol_20250805_142437_169234.png",
-                "/Users/kim/opencv_project/ui_flow_recorder/images/18_main_nol_20250813_150529_661381.png"
-            ]
-        },
-        "19": {
-            "name": "main_menu",
-            "paths": [
-                "/Users/kim/opencv_project/ui_flow_recorder/images/19_main_menu_20250805_142508_180949.png"
+                "/Users/kim/opencv_project/ui_flow_recorder/images/18_pangpang_nol_20250825_132220_219421.png",
+                "/Users/kim/opencv_project/ui_flow_recorder/images/18_pangpang_nol_20250825_132242_915273.png"
             ],
             "pos": [
-                538,
-                527
-            ]
-        },
-        "20": {
-            "name": "subject_report",
-            "paths": [
-                "/Users/kim/opencv_project/ui_flow_recorder/images/20_subject_report_20250805_143146_394436.png"
-            ],
-            "pos": [
-                1413,
-                338
-            ]
-        },
-        "21": {
-            "name": "multi_media_report",
-            "paths": [
-                "/Users/kim/opencv_project/ui_flow_recorder/images/21_multi_media_report_20250805_143225_962705.png"
-            ],
-            "pos": [
-                1411,
-                260
-            ]
-        },
-        "22": {
-            "name": "main_ten_dropdown",
-            "paths": [
-                "/Users/kim/opencv_project/ui_flow_recorder/images/22_main_ten_dropdown_20250805_144709_725520.png",
-                "/Users/kim/opencv_project/ui_flow_recorder/images/22_main_ten_dropdown_20250813_142344_985334.png"
-            ],
-            "pos": [
-                338,
-                404
-            ]
-        },
-        "23": {
-            "name": "my_page",
-            "paths": [
-                "/Users/kim/opencv_project/ui_flow_recorder/images/23_my_page_20250806_111913_343169.png"
-            ],
-            "pos": [
-                340,
-                565
-            ]
-        },
-        "24": {
-            "name": "study_calendar",
-            "paths": [
-                "/Users/kim/opencv_project/ui_flow_recorder/images/24_study_calendar_20250806_112141_133569.png"
-            ],
-            "pos": [
-                143,
-                401
-            ]
-        },
-        "25": {
-            "name": "Correction_notebook",
-            "paths": [
-                "/Users/kim/opencv_project/ui_flow_recorder/images/25_Correction_notebook_20250806_112418_883611.png"
-            ],
-            "pos": [
-                546,
-                724
-            ]
-        },
-        "26": {
-            "name": "gifticon_shop",
-            "paths": [
-                "/Users/kim/opencv_project/ui_flow_recorder/images/26_gifticon_shop_20250806_112711_808708.png"
-            ],
-            "pos": [
-                342,
-                726
-            ]
-        },
-        "27": {
-            "name": "item_shop",
-            "paths": [
-                "/Users/kim/opencv_project/ui_flow_recorder/images/27_item_shop_20250806_112900_471151.png"
-            ],
-            "pos": [
-                140,
-                566
-            ]
-        },
-        "28": {
-            "name": "icoin",
-            "paths": [
-                "/Users/kim/opencv_project/ui_flow_recorder/images/28_icoin_20250806_112946_016200.png"
-            ],
-            "pos": [
-                144,
-                726
-            ]
-        },
-        "29": {
-            "name": "eye_tracking",
-            "paths": [
-                "/Users/kim/opencv_project/ui_flow_recorder/images/29_eye_tracking_20250813_092336_134945.png",
-                "/Users/kim/opencv_project/ui_flow_recorder/images/29_eye_tracking_20250813_092405_059494.png"
-            ],
-            "pos": [
-                416,
-                170
-            ]
-        },
-        "30": {
-            "name": "concept_video",
-            "paths": [
-                "/Users/kim/opencv_project/ui_flow_recorder/images/30_concept_video_20250813_092513_620326.png",
-                "/Users/kim/opencv_project/ui_flow_recorder/images/30_concept_video_20250813_092548_782391.png",
-                "/Users/kim/opencv_project/ui_flow_recorder/images/30_concept_video_20250813_092725_852398.png"
-            ],
-            "pos": [
-                419,
-                102
-            ]
-        },
-        "31": {
-            "name": "concept_order",
-            "paths": [
-                "/Users/kim/opencv_project/ui_flow_recorder/images/31_concept_order_20250813_092658_163938.png"
-            ],
-            "pos": [
-                533,
-                40
-            ]
-        },
-        "32": {
-            "name": "check_activity",
-            "paths": [
-                "/Users/kim/opencv_project/ui_flow_recorder/images/32_check_activity_20250813_092759_923271.png",
-                "/Users/kim/opencv_project/ui_flow_recorder/images/32_check_activity_20250813_092828_243852.png"
-            ],
-            "pos": [
-                658,
-                104
-            ]
-        },
-        "33": {
-            "name": "basic_problem",
-            "paths": [
-                "/Users/kim/opencv_project/ui_flow_recorder/images/33_basic_problem_20250813_092901_378886.png",
-                "/Users/kim/opencv_project/ui_flow_recorder/images/33_basic_problem_20250813_093139_880332.png"
-            ],
-            "pos": [
-                658,
-                173
+                -95,
+                1293
             ]
         }
     },
@@ -277,280 +196,553 @@
             "touch_events": [
                 {
                     "type": "tap",
-                    "x": 299,
-                    "y": 35,
-                    "time": 2.3266
+                    "x": 307,
+                    "y": 38,
+                    "time": 2.5159
                 }
             ]
         },
         {
             "from": "2",
-            "to": "1",
+            "to": "3",
             "coords": null,
             "touch_events": [
                 {
                     "type": "tap",
-                    "x": 123,
-                    "y": 30,
-                    "time": 1.4912
+                    "x": 443,
+                    "y": 33,
+                    "time": 2.6783
+                },
+                {
+                    "type": "tap",
+                    "x": 888,
+                    "y": 676,
+                    "time": 5.5793
                 }
             ]
-        },
-        {
-            "from": "1",
-            "to": "3",
-            "coords": null
         },
         {
             "from": "3",
-            "to": "1",
-            "coords": null
-        },
-        {
-            "from": "1",
             "to": "4",
-            "coords": null
-        },
-        {
-            "from": "4",
-            "to": "1",
-            "coords": null
-        },
-        {
-            "from": "1",
-            "to": "5",
-            "coords": null
-        },
-        {
-            "from": "5",
-            "to": "1",
-            "coords": null
-        },
-        {
-            "from": "1",
-            "to": "6",
-            "coords": null
-        },
-        {
-            "from": "6",
-            "to": "1",
-            "coords": null
-        },
-        {
-            "from": "1",
-            "to": "7",
-            "coords": null
-        },
-        {
-            "from": "7",
-            "to": "1",
-            "coords": null
-        },
-        {
-            "from": "3",
-            "to": "3",
-            "coords": null
-        },
-        {
-            "from": "16",
-            "to": "4",
-            "coords": null
-        },
-        {
-            "from": "4",
-            "to": "16",
-            "coords": null
-        },
-        {
-            "from": "16",
-            "to": "1",
-            "coords": null
-        },
-        {
-            "from": "5",
-            "to": "5",
-            "coords": null
-        },
-        {
-            "from": "5",
-            "to": "17",
-            "coords": null
-        },
-        {
-            "from": "17",
-            "to": "18",
-            "coords": null
-        },
-        {
-            "from": "18",
-            "to": "19",
-            "coords": null
-        },
-        {
-            "from": "19",
-            "to": "2",
-            "coords": null
-        },
-        {
-            "from": "2",
-            "to": "19",
-            "coords": null
-        },
-        {
-            "from": "19",
-            "to": "6",
-            "coords": null
-        },
-        {
-            "from": "6",
-            "to": "19",
-            "coords": null
-        },
-        {
-            "from": "19",
-            "to": "7",
-            "coords": null
-        },
-        {
-            "from": "7",
-            "to": "20",
-            "coords": null
-        },
-        {
-            "from": "20",
-            "to": "21",
-            "coords": null
-        },
-        {
-            "from": "21",
-            "to": "20",
-            "coords": null
-        },
-        {
-            "from": "20",
-            "to": "7",
-            "coords": null
-        },
-        {
-            "from": "21",
-            "to": "7",
-            "coords": null
-        },
-        {
-            "from": "7",
-            "to": "21",
-            "coords": null
-        },
-        {
-            "from": "7",
-            "to": "18",
-            "coords": null
-        },
-        {
-            "from": "19",
-            "to": "18",
-            "coords": null
-        },
-        {
-            "from": "19",
-            "to": "3",
-            "coords": null
-        },
-        {
-            "from": "19",
-            "to": "4",
-            "coords": null
-        },
-        {
-            "from": "4",
-            "to": "19",
-            "coords": null
-        },
-        {
-            "from": "19",
-            "to": "5",
-            "coords": null
-        },
-        {
-            "from": "17",
-            "to": "5",
-            "coords": null
-        },
-        {
-            "from": "5",
-            "to": "19",
-            "coords": null
-        },
-        {
-            "from": "16",
-            "to": "19",
-            "coords": null
-        },
-        {
-            "from": "19",
-            "to": "16",
-            "coords": null
-        },
-        {
-            "from": "16",
-            "to": "18",
-            "coords": null
-        },
-        {
-            "from": "18",
-            "to": "1",
             "coords": null,
             "touch_events": [
                 {
                     "type": "tap",
-                    "x": 910,
-                    "y": 78,
-                    "time": 8.6575
+                    "x": 648,
+                    "y": 48,
+                    "time": 0.7294
                 }
             ]
         },
         {
-            "from": "1",
-            "to": "22",
+            "from": "4",
+            "to": "5",
             "coords": null,
             "touch_events": [
                 {
                     "type": "tap",
-                    "x": 1854,
-                    "y": 49,
-                    "time": 1.0925
+                    "x": 456,
+                    "y": 225,
+                    "time": 1.558
                 }
             ]
         },
         {
-            "from": "1",
-            "to": "1",
-            "coords": null,
-            "touch_events": []
-        },
-        {
-            "from": "22",
-            "to": "1",
+            "from": "5",
+            "to": "4",
             "coords": null,
             "touch_events": [
                 {
                     "type": "tap",
-                    "x": 1851,
+                    "x": 163,
+                    "y": 224,
+                    "time": 0.6266
+                }
+            ]
+        },
+        {
+            "from": "4",
+            "to": "6",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 841,
+                    "y": 48,
+                    "time": 0.4635
+                }
+            ]
+        },
+        {
+            "from": "6",
+            "to": "7",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 1027,
                     "y": 43,
-                    "time": 0.6115
+                    "time": 0.6366
                 }
             ]
         },
         {
-            "from": "22",
-            "to": "19",
+            "from": "7",
+            "to": "8",
             "coords": null,
             "touch_events": [
                 {
                     "type": "tap",
-                    "x": 1760,
-                    "y": 140,
-                    "time": 1.4441
+                    "x": 1208,
+                    "y": 41,
+                    "time": 0.6389
+                }
+            ]
+        },
+        {
+            "from": "8",
+            "to": "1",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 134,
+                    "y": 48,
+                    "time": 0.6569
+                }
+            ]
+        },
+        {
+            "from": "1",
+            "to": "9",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 1734,
+                    "y": 51,
+                    "time": 0.7932
+                }
+            ]
+        },
+        {
+            "from": "9",
+            "to": "10",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 1844,
+                    "y": 86,
+                    "time": 0.5776
+                }
+            ]
+        },
+        {
+            "from": "10",
+            "to": "11",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 451,
+                    "y": 204,
+                    "time": 0.8506
+                }
+            ]
+        },
+        {
+            "from": "11",
+            "to": "7",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 1825,
+                    "y": 78,
+                    "time": 1.799
+                }
+            ]
+        },
+        {
+            "from": "9",
+            "to": "1",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 908,
+                    "y": 80,
+                    "time": 0.852
+                }
+            ]
+        },
+        {
+            "from": "1",
+            "to": "12",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 1838,
+                    "y": 25,
+                    "time": 4.4181
+                }
+            ]
+        },
+        {
+            "from": "12",
+            "to": "10",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 1673,
+                    "y": 139,
+                    "time": 0.7458
+                }
+            ]
+        },
+        {
+            "from": "10",
+            "to": "1",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 1843,
+                    "y": 70,
+                    "time": 0.6986
+                }
+            ]
+        },
+        {
+            "from": "10",
+            "to": "2",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 361,
+                    "y": 329,
+                    "time": 1.9308
+                }
+            ]
+        },
+        {
+            "from": "10",
+            "to": "3",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 446,
+                    "y": 516,
+                    "time": 0.4777
+                }
+            ]
+        },
+        {
+            "from": "10",
+            "to": "4",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 518,
+                    "y": 779,
+                    "time": 1.1012
+                }
+            ]
+        },
+        {
+            "from": "10",
+            "to": "6",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 420,
+                    "y": 972,
+                    "time": 0.6013
+                }
+            ]
+        },
+        {
+            "from": "10",
+            "to": "8",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 1536,
+                    "y": 230,
+                    "time": 1.1633
+                }
+            ]
+        },
+        {
+            "from": "10",
+            "to": "7",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 1030,
+                    "y": 222,
+                    "time": 0.624
+                }
+            ]
+        },
+        {
+            "from": "8",
+            "to": "7",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 1025,
+                    "y": 46,
+                    "time": 1.0553
+                }
+            ]
+        },
+        {
+            "from": "7",
+            "to": "6",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 886,
+                    "y": 51,
+                    "time": 0.5196
+                }
+            ]
+        },
+        {
+            "from": "6",
+            "to": "4",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 672,
+                    "y": 40,
+                    "time": 0.9106
+                }
+            ]
+        },
+        {
+            "from": "4",
+            "to": "3",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 484,
+                    "y": 41,
+                    "time": 1.0433
+                }
+            ]
+        },
+        {
+            "from": "3",
+            "to": "2",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 342,
+                    "y": 41,
+                    "time": 1.2296
+                }
+            ]
+        },
+        {
+            "from": "2",
+            "to": "1",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 136,
+                    "y": 44,
+                    "time": 1.8978
+                }
+            ]
+        },
+        {
+            "from": "1",
+            "to": "13",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 278,
+                    "y": 851,
+                    "time": 0.9539
+                }
+            ]
+        },
+        {
+            "from": "1",
+            "to": "14",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 476,
+                    "y": 868,
+                    "time": 0.743
+                }
+            ]
+        },
+        {
+            "from": "1",
+            "to": "15",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 755,
+                    "y": 889,
+                    "time": 1.3941
+                }
+            ]
+        },
+        {
+            "from": "15",
+            "to": "1",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 1840,
+                    "y": 65,
+                    "time": 0.9158
+                }
+            ]
+        },
+        {
+            "from": "14",
+            "to": "1",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 1852,
+                    "y": 76,
+                    "time": 4.5618
+                }
+            ]
+        },
+        {
+            "from": "13",
+            "to": "1",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 1643,
+                    "y": 171,
+                    "time": 0.9452
+                },
+                {
+                    "type": "tap",
+                    "x": 1644,
+                    "y": 169,
+                    "time": 3.3974
+                }
+            ]
+        },
+        {
+            "from": "1",
+            "to": "16",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 1081,
+                    "y": 888,
+                    "time": 1.1921
+                }
+            ]
+        },
+        {
+            "from": "16",
+            "to": "1",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 1844,
+                    "y": 70,
+                    "time": 0.8205
+                }
+            ]
+        },
+        {
+            "from": "1",
+            "to": "1",
+            "coords": null,
+            "touch_events": []
+        },
+        {
+            "from": "1",
+            "to": "17",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 1739,
+                    "y": 872,
+                    "time": 1.589
+                }
+            ]
+        },
+        {
+            "from": "17",
+            "to": "1",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 1859,
+                    "y": 54,
+                    "time": 1.3202
+                },
+                {
+                    "type": "tap",
+                    "x": 1859,
+                    "y": 54,
+                    "time": 2.0742
+                }
+            ]
+        },
+        {
+            "from": "1",
+            "to": "11",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 1164,
+                    "y": 644,
+                    "time": 1.1595
+                }
+            ]
+        },
+        {
+            "from": "11",
+            "to": "1",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 99,
+                    "y": 76,
+                    "time": 0.583
                 }
             ]
         },
@@ -561,120 +753,153 @@
             "touch_events": [
                 {
                     "type": "tap",
-                    "x": 1748,
-                    "y": 36,
-                    "time": 1.6121
+                    "x": 1478,
+                    "y": 43,
+                    "time": 1.2222
                 }
             ]
         },
         {
-            "from": "19",
-            "to": "23",
-            "coords": null
-        },
-        {
-            "from": "23",
-            "to": "1",
-            "coords": null
-        },
-        {
-            "from": "23",
-            "to": "24",
-            "coords": null
-        },
-        {
-            "from": "24",
-            "to": "23",
-            "coords": null
-        },
-        {
-            "from": "23",
-            "to": "25",
-            "coords": null
-        },
-        {
-            "from": "23",
-            "to": "26",
-            "coords": null
-        },
-        {
-            "from": "23",
-            "to": "27",
-            "coords": null
-        },
-        {
-            "from": "23",
-            "to": "28",
-            "coords": null
-        },
-        {
-            "from": "27",
-            "to": "23",
-            "coords": null
-        },
-        {
-            "from": "28",
-            "to": "23",
-            "coords": null
-        },
-        {
-            "from": "26",
-            "to": "23",
-            "coords": null
-        },
-        {
-            "from": "25",
-            "to": "23",
-            "coords": null
-        },
-        {
-            "from": "1",
-            "to": "29",
-            "coords": null
-        },
-        {
-            "from": "29",
-            "to": "30",
-            "coords": null
-        },
-        {
-            "from": "32",
-            "to": "33",
-            "coords": null
-        },
-        {
-            "from": "33",
-            "to": "1",
-            "coords": null
-        },
-        {
-            "from": "30",
-            "to": "31",
-            "coords": null
-        },
-        {
-            "from": "31",
-            "to": "32",
-            "coords": null
-        },
-        {
-            "from": "19",
+            "from": "18",
             "to": "1",
             "coords": null,
             "touch_events": [
                 {
                     "type": "tap",
-                    "x": 72,
-                    "y": 54,
-                    "time": 1.3784
+                    "x": 57,
+                    "y": 56,
+                    "time": 1.5012
                 }
             ]
         },
         {
-            "from": "19",
-            "to": "19",
+            "from": "1",
+            "to": "3",
             "coords": null,
-            "touch_events": []
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 444,
+                    "y": 35,
+                    "time": 1.3779
+                }
+            ]
+        },
+        {
+            "from": "3",
+            "to": "1",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 166,
+                    "y": 49,
+                    "time": 0.4667
+                }
+            ]
+        },
+        {
+            "from": "1",
+            "to": "4",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 652,
+                    "y": 33,
+                    "time": 1.5054
+                },
+                {
+                    "type": "tap",
+                    "x": 1836,
+                    "y": 83,
+                    "time": 4.5174
+                }
+            ]
+        },
+        {
+            "from": "4",
+            "to": "1",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 144,
+                    "y": 56,
+                    "time": 0.4779
+                }
+            ]
+        },
+        {
+            "from": "1",
+            "to": "6",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 873,
+                    "y": 41,
+                    "time": 1.3467
+                }
+            ]
+        },
+        {
+            "from": "6",
+            "to": "1",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 124,
+                    "y": 32,
+                    "time": 0.7184
+                }
+            ]
+        },
+        {
+            "from": "1",
+            "to": "7",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 1025,
+                    "y": 51,
+                    "time": 0.8373
+                },
+                {
+                    "type": "tap",
+                    "x": 200,
+                    "y": 371,
+                    "time": 7.5446
+                }
+            ]
+        },
+        {
+            "from": "7",
+            "to": "1",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 115,
+                    "y": 36,
+                    "time": 0.6443
+                }
+            ]
+        },
+        {
+            "from": "1",
+            "to": "8",
+            "coords": null,
+            "touch_events": [
+                {
+                    "type": "tap",
+                    "x": 1180,
+                    "y": 28,
+                    "time": 3.5586
+                }
+            ]
         }
     ]
 }

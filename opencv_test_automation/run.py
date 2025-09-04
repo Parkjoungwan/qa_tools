@@ -32,7 +32,7 @@ import sys
 import shlex
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent
+ROOT = Path(__file__).resolve().parent.parent
 sys.path.append(str(ROOT))
 TESTS_PACKAGE = "tests"
 
@@ -54,13 +54,13 @@ def parse_targets(args: list[str]) -> list[tuple[str, int]]:
 
 def check_module_exists(mod_name: str):
     """tests.mod_name 에 해당하는 파일이 존재하는지 확인."""
-    module_path = ROOT / TESTS_PACKAGE.replace('.', '/') / f"{mod_name}.py"
+    module_path = ROOT / "opencv_test_automation" / TESTS_PACKAGE.replace('.', '/') / f"{mod_name}.py"
     if not module_path.exists():
         sys.exit(f"❌  모듈 파일 {module_path} 이(가) 없습니다.")
 
 
 def run_module(mod_name: str, extra: list[str]):
-    module_path = ROOT / TESTS_PACKAGE.replace('.', '/') / f"{mod_name}.py"
+    module_path = ROOT / "opencv_test_automation" / TESTS_PACKAGE.replace('.', '/') / f"{mod_name}.py"
     env = os.environ.copy()
     env["PYTHONPATH"] = str(ROOT) + os.pathsep + env.get("PYTHONPATH", "")
 

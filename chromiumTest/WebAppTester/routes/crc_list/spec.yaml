@@ -1,0 +1,53 @@
+meta:
+  route: "/crc/list"
+  require_login: true
+
+env:
+  keys: ["BASE_URL"]
+
+navigations:
+  # 보통 /login 이후 리다이렉트로 도착하지만, 독립 실행 시에는 entry_url을 사용
+  entry_url: "${BASE_URL}/crc/list"
+  ready_indicator:
+    # 리스트 화면 진입 판정(예: weeksArea 존재)
+    type: "css"
+    selector: "#weeksArea"
+
+scope:
+  weeks: [1, 2]        # 이번 테스트 범위
+  rounds: [1, 2]       # (필요 시) 1,2차시만
+  # 대상 앵커 기본 선택자(발견 규칙)
+  discovery_selector: "#weeksArea a.roundClass"
+  # data-* 필터링 키
+  data_filters: ["week", "round"]   # 필요하면 ["week", "round", "code"]
+  # 클릭 순서: dom | text_asc | code_asc ...
+  order: "dom"
+
+interaction:
+  click:
+    by: "css"
+    # 아래 템플릿으로 필터된 앵커를 추출해 순회 클릭
+    # 예: #weeksArea a.roundClass[data-week="1"][data-round="1"]
+    selector_template: '#weeksArea a.roundClass[data-week="{{week}}"][data-round="{{round}}"]'
+  wait_for_form:
+    # 폼 로딩 성공 지표
+    type: "css"
+    selector: "form#infoForm"
+    visible: true
+
+artifact:
+  screenshot:
+    # 폼 '엘리먼트'만 캡처(엘리먼트 스크린샷)
+    target: "element"         # element | fullpage | viewport
+    element_selector: "form#infoForm"
+    # 파일명 규칙(토큰은 아래 name_source에서 정의)
+    filename_template: "form_w{{week}}_r{{round}}_{{code|slug}}.png"
+    output_dir: "artifacts/forms"   # 상대 경로
+
+name_source:
+  # 스크린샷 파일명에 쓸 "폼 이름"의 기본 소스:
+  # 1) 클릭한 앵커의 텍스트, 2) data-code(백업)
+  anchor_text_fallback_to: "data-code"
+
+timeouts:
+  default_ms: 10000

@@ -8,14 +8,14 @@ import numpy as np
 import cv2
 from skimage.metrics import structural_similarity as ssim
 import math
-from PyQt5.QtCore import Qt, QPoint, QRect, QPointF
+from PyQt5.QtCore import Qt, QPoint, QRect, QPointF, QMetaObject, Q_ARG, pyqtSlot
 from PyQt5.QtGui import QPainter, QColor, QPen, QGuiApplication, QPolygonF, QCursor, QVector2D
 from PyQt5.QtWidgets import QApplication, QWidget, QInputDialog, QLineEdit, QMenu, QAction, QMessageBox
 
 # --- Constants ---
 DATA_FILE = Path(__file__).parent / "flow_data.json"
 IMAGES_DIR = Path(__file__).parent / "images"
-SIMILARITY_THRESHOLD = 0.90
+SIMILARITY_THRESHOLD = 0.85
 MAX_REF_IMAGES = 10  # 화면별 참조 이미지 최대 보유 개수
 
 # --- Helper Functions ---
@@ -266,15 +266,66 @@ class FlowRecorder(QWidget):
         try: return cv2.resize(cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2GRAY), size)
         except Exception: return None
 
-    def match_existing_screen(self, frame_bgr: np.ndarray) -> Optional[str]:
+    def match_existing_screen(self, frame_bgr: np.ndarray, expected_id: Optional[str] = None) -> Optional[str]:
         screens = self.flow_data.get("screens", {})
         if not screens: return None
-        for screen_id, info in screens.items():
+
+        # 1. Prioritize checking against the expected screen
+        if expected_id and expected_id in screens:
+            info = screens[expected_id]
+            expected_name = info.get('name', 'Unknown')
+            print(f"Prioritizing match for expected screen: {expected_id} ('{expected_name}')")
             for path in info.get("paths", []):
-                if (img := cv2.imread(path)) is None: continue
+                if not Path(path).exists(): continue
+                img = cv2.imread(path)
+                if img is None: continue
+                
                 gray_ref = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
                 if (gray_new := self._frame_to_gray(frame_bgr, gray_ref.shape[::-1])) is None: continue
-                if self._ssim_match(gray_ref, gray_new) > SIMILARITY_THRESHOLD: return screen_id
+                
+                score = self._ssim_match(gray_ref, gray_new)
+                print(f"  - Comparing with expected screen ref {Path(path).name}: SSIM = {score:.4f}")
+                # Use a slightly more lenient threshold for the expected screen
+                if score > (SIMILARITY_THRESHOLD - 0.05):
+                    print(f"Confirmed expected screen {expected_id} with high confidence: {score:.4f}")
+                    return expected_id
+
+        # 2. If no high-confidence match on expected, check all screens
+        print("Falling back to general screen match...")
+        best_match_id = None
+        highest_ssim = 0.0
+
+        for screen_id, info in screens.items():
+            # Skip re-checking the expected ID if we already did
+            if screen_id == expected_id:
+                continue
+
+            for path in info.get("paths", []):
+                if not Path(path).exists():
+                    print(f"Warning: Image path not found: {path}")
+                    continue
+                
+                img = cv2.imread(path)
+                if img is None:
+                    print(f"Warning: Failed to read image: {path}")
+                    continue
+                
+                gray_ref = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+                
+                if (gray_new := self._frame_to_gray(frame_bgr, gray_ref.shape[::-1])) is None: continue
+                
+                score = self._ssim_match(gray_ref, gray_new)
+                print(f"  - Comparing with {Path(path).name}: SSIM = {score:.4f}")
+
+                if score > highest_ssim:
+                    highest_ssim = score
+                    best_match_id = screen_id
+
+        if highest_ssim > SIMILARITY_THRESHOLD:
+            print(f"Found best match: screen {best_match_id} ('{self.flow_data['screens'].get(best_match_id, {}).get('name')}') with SSIM {highest_ssim:.4f}")
+            return best_match_id
+            
+        print(f"No suitable match found. Highest SSIM: {highest_ssim:.4f} (Threshold: {SIMILARITY_THRESHOLD})")
         return None
 
     def capture_and_identify_screen(self) -> Tuple[Optional[str], bool]:
@@ -514,15 +565,18 @@ class DiagramWidget(QWidget):
         print(f"Starting replay of {len(events)} events on thread...")
         threading.Thread(target=replay_touch_events, args=(self.serial, events, on_replay_finished), daemon=True).start()
 
+    @pyqtSlot(str)
     def verify_arrival(self, expected_node_id: str):
         if not expected_node_id: return
 
         print(f"Verifying arrival at screen ID: {expected_node_id}...")
+        time.sleep(1.0)
+
         if (frame := adb_capture(self.serial)) is None:
             print("Failed to capture screen for verification.")
             return
 
-        actual_node_id = self.main_window.match_existing_screen(frame)
+        actual_node_id = self.main_window.match_existing_screen(frame, expected_id=expected_node_id)
         expected_name = self.flow_data['screens'].get(expected_node_id, {}).get('name', 'Unknown')
 
         if actual_node_id == expected_node_id:
@@ -531,6 +585,13 @@ class DiagramWidget(QWidget):
         else:
             actual_name = self.flow_data['screens'].get(actual_node_id, {}).get('name', 'Unknown') if actual_node_id else "Unknown Screen"
             print(f"Arrival verification failed. Expected '{expected_name}', but arrived at '{actual_name}'.")
+            
+            fail_dir = IMAGES_DIR / "failed_verifications"
+            fail_dir.mkdir(exist_ok=True)
+            fail_path = fail_dir / f"failed_{expected_name}_to_{actual_name}_{now_tag()}.png"
+            cv2.imwrite(str(fail_path), frame)
+            print(f"Saved failed verification image to: {fail_path}")
+
             msg_box = QMessageBox(self); msg_box.setStyleSheet("QLabel{ color: black; }"); msg_box.setIcon(QMessageBox.Warning)
             msg_box.setText(f"Expected to arrive at '{expected_name}' but ended up at '{actual_name}'.")
             msg_box.setWindowTitle("Verification Failed"); msg_box.exec_()

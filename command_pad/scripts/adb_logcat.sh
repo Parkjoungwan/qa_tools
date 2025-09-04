@@ -1,34 +1,32 @@
-#!/usr/bin/env bash
+#!/bin/bash
 
-# adb_logcat_targeted.sh
-# 지정된 기기 serial에만 logcat 필터 적용 (하드코딩된 값 사용)
-
-520068a9435db5d5set -euo pipefail
-
-# 타겟 기기 serial (하드코딩)
-TARGET_SERIAL="52006ed48cddb50f"
-
-# 연결된 기기 목록 확인
-DEVICES=($(adb devices | awk 'NR>1 && $2=="device" {print $1}'))
-
-# 타겟 기기가 연결되어 있는지 확인
-FOUND=false
-for serial in "${DEVICES[@]}"; do
-  if [ "$serial" = "$TARGET_SERIAL" ]; then
-    FOUND=true
-    break
-  fi
-done
-
-if [ "$FOUND" = true ]; then
-  echo "✅ 타겟 기기 ($TARGET_SERIAL) 에 로그캣 필터 적용 중..."
-  adb -s "$TARGET_SERIAL" logcat Unity:E Crash:E Fatal:E '*:S'
+TARGET_SERIALS=()
+if [ "$#" -eq 0 ]; then
+    TARGET_SERIALS+=("$DEVICE1")
 else
-  echo "❌ 타겟 기기 ($TARGET_SERIAL)를 찾을 수 없습니다."
-  echo "🔎 연결된 기기 목록:"
-  for s in "${DEVICES[@]}"; do
-    echo " - $s"
-  done
-  exit 1
+    for arg in "$@"; do
+        if [ "$arg" = "1" ]; then
+            TARGET_SERIALS+=("$DEVICE1")
+        elif [ "$arg" = "2" ]; then
+            TARGET_SERIALS+=("$DEVICE2")
+        fi
+    done
 fi
 
+# Logcat can only run on one device at a time in the foreground.
+# We will use the first specified valid device.
+FIRST_TARGET=""
+for SERIAL in "${TARGET_SERIALS[@]}"; do
+    if adb devices | grep -q "^$SERIAL[[:space:]]device$"; then
+        FIRST_TARGET=$SERIAL
+        break
+    fi
+done
+
+if [ -z "$FIRST_TARGET" ]; then
+    echo "❌ None of the specified devices are connected."
+    exit 1
+fi
+
+echo "✅ Attaching logcat to device ($FIRST_TARGET)..."
+adb -s "$FIRST_TARGET" logcat Unity:E Crash:E Fatal:E '*:S'

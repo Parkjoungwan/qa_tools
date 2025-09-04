@@ -1,0 +1,55 @@
+# WebAppTester/routes/login/spec.yaml
+meta:
+  route: "/login"
+  require_login: false
+
+env:
+  # 실제 값은 .env/CI secrets에서 주입
+  keys: ["BASE_URL", "LOGIN_ID", "LOGIN_PW"]
+
+navigations:
+  entry_url: "${BASE_URL}/login"
+  success_url_regex: ".*/crc/list$"   # 로그인 성공 후 도달 URL 패턴
+
+fields:
+  - id: "loginId"
+    selector: "#loginId"
+    type: "text"
+    required: true
+    label: "아이디"
+    value_from_env: "LOGIN_ID"
+  - id: "pwd"
+    selector: "#pwd"
+    type: "password"
+    required: true
+    label: "비밀번호"
+    value_from_env: "LOGIN_PW"
+
+actions:
+  submit:
+    by:
+      type: "css"         # 초기에는 명시적 id 사용, 추후 role-based로 전환 가능
+      selector: "#btnLogin"
+    # 또는 role 기반 (UI 확정 시)
+    # by:
+    #   type: "role"
+    #   role: "button"
+    #   name: "로그인"
+
+success_indicators:
+  # URL 매칭은 필수, 아래는 보조 지표(화면 헤딩/메뉴 등 실화면에 맞게 수정)
+  - type: "role"
+    role: "heading"
+    name: "과정 목록"     # 예시 텍스트(실제 화면에 맞춰 조정)
+
+timeouts:
+  default_ms: 10000       # 필요 시 조정
+
+artifacts:
+  screenshots:
+    - url: "/login"
+      fullPage: false
+      filename: "login_viewport.png"
+    - url: "/crc/list"
+      fullPage: true
+      filename: "crc_list_full.png"
