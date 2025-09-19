@@ -8,7 +8,7 @@ def slugify(text: str) -> str:
     한글은 유지합니다.
     """
     # 한글, 영문, 숫자, 하이픈, 밑줄을 제외한 문자를 제거
-    text = re.sub(r'[^\w\s-가-힣]', '', text)
+    text = re.sub(r'[^\w\s가-힣-]', '', text)
     # 공백을 하이픈으로 변환하고, 여러 개의 하이픈은 하나로 합침
     text = re.sub(r'[-\s]+', '-', text).strip('-')
     # 영문자는 소문자로

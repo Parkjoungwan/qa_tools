@@ -37,51 +37,68 @@ def test_crc_list_interaction(logged_in_page: Page, crc_list_spec: dict):
     # "1주차"라는 텍스트를 가진 첫 번째 dt 태그를 기다린다.
     expect(page.locator("#weeksArea dt", has_text="1주차").first).to_be_visible()
 
-    # 3. 테스트 대상 앵커 목록 수집
-    target_anchors = page.locator(spec_scope['discovery_selector']).all()
-    print(f"\n[Debug] Found {len(target_anchors)} total anchors with selector: {spec_scope['discovery_selector']}")
-
-    # 스펙에 정의된 주차(week)와 차시(round)로 필터링
-    scoped_anchors = []
-    for anchor in target_anchors:
-        week = anchor.get_attribute("data-week")
-        round_val = anchor.get_attribute("data-round")
-        if week and round_val and int(week) in spec_scope['weeks'] and int(round_val) in spec_scope['rounds']:
-            scoped_anchors.append(anchor)
-    
-    print(f"[Debug] Found {len(scoped_anchors)} anchors matching the scope (weeks={spec_scope['weeks']}, rounds={spec_scope['rounds']})")
-
-    # 3. 각 앵커 순회하며 테스트 진행
+    # 3. 주차와 차시를 기준으로 루프를 돌며 테스트 진행
+    weeks_to_test = spec_scope['weeks']
+    rounds_to_test = spec_scope['rounds']
     form_locator = page.locator(spec_interact['wait_for_form']['selector'])
     output_dir = Path(spec_artifact['screenshot']['output_dir'])
     output_dir.mkdir(parents=True, exist_ok=True)
+    WAIT_TIMEOUT = spec_interact.get('wait_for_form', {}).get('timeout_ms', 10_000)
 
-    for anchor in scoped_anchors:
-        # 4. 앵커 클릭
-        anchor.click()
+    def form_signature(p: Page) -> str:
+        # 폼이 없으면 'NONE', 있으면 텍스트 일부 + 자식 수로 간단 시그니처 생성
+        return p.evaluate("""() => {
+            const f = document.querySelector('form#infoForm');
+            if (!f) return 'NONE';
+            const t = (f.innerText || '').slice(0, 200);
+            return t + '|' + f.childElementCount;
+        }""")
 
-        # 5. 폼 로딩 대기 및 검증
-        expect(form_locator).to_be_visible()
+    for week in weeks_to_test:
+        for round_val in rounds_to_test:
+            group_selector = f"#weeksArea a.roundClass[data-week='{week}'][data-round='{round_val}']"
+            anchors_in_group = page.locator(group_selector).all()
+            
+            print(f"\n[Debug] Testing group: week={week}, round={round_val}. Found {len(anchors_in_group)} items.")
 
-        # 6. 스크린샷 파일명 생성
-        week = anchor.get_attribute("data-week")
-        round_val = anchor.get_attribute("data-round")
-        
-        # 앵커 텍스트 또는 data-code로 파일명 결정
-        anchor_text = anchor.text_content()
-        if anchor_text and anchor_text.strip():
-            name_token = anchor_text
-        else:
-            name_token = anchor.get_attribute(crc_list_spec['name_source']['anchor_text_fallback_to'])
+            for anchor in anchors_in_group:
+                # --- 클릭 전: 이전 폼 시그니처 확보
+                prev_sig = form_signature(page)
 
-        filename = (
-            spec_artifact['screenshot']['filename_template']
-            .replace("{{week}}", week)
-            .replace("{{round}}", round_val)
-            .replace("{{code|slug}}", slugify(name_token))
-        )
+                # 클릭 대상의 '이름 토큰' 선정 (앵커 텍스트 우선, 없으면 data-code)
+                anchor_text = (anchor.text_content() or "").strip()
+                name_token = anchor_text or (anchor.get_attribute(crc_list_spec['name_source']['anchor_text_fallback_to']) or "").strip()
 
-        # 7. 폼 엘리먼트 스크린샷 캡처
-        screenshot_path = output_dir / filename
-        form_locator.screenshot(path=str(screenshot_path))
-        print(f"Captured: {screenshot_path}")
+                # --- 클릭
+                anchor.click()
+
+                # --- 폼 보임 대기 (기본 가시성)
+                expect(form_locator).to_be_visible(timeout=WAIT_TIMEOUT)
+
+                # --- 1순위: 폼이 '방금 클릭한 항목'으로 갱신되었는지 내용 기준 대기
+                try:
+                    page.wait_for_function(
+                        "token => {\n                            const f = document.querySelector('form#infoForm');\n                            if (!f) return false;\n                            const txt = f.innerText || '';\n                            return token && txt.includes(token);\n                        }",
+                        arg=name_token,
+                        timeout=WAIT_TIMEOUT
+                    )
+                except Exception:
+                    # --- 2순위(폴백): 폼 시그니처가 이전과 달라질 때까지 대기
+                    page.wait_for_function(
+                        "prev => {\n                            const f = document.querySelector('form#infoForm');\n                            if (!f) return false;\n                            const cur = (f.innerText || '').slice(0, 200) + '|' + f.childElementCount;\n                            return cur !== prev;\n                        }",
+                        arg=prev_sig,
+                        timeout=WAIT_TIMEOUT
+                    )
+
+                # --- 파일명 생성
+                filename = (
+                    spec_artifact['screenshot']['filename_template']
+                    .replace("{{week}}", str(week))
+                    .replace("{{round}}", str(round_val))
+                    .replace("{{code|slug}}", slugify(name_token))
+                )
+
+                # --- 엘리먼트 스크린샷
+                screenshot_path = output_dir / filename
+                form_locator.screenshot(path=str(screenshot_path))
+                print(f"Captured: {screenshot_path}")

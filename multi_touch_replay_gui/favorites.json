@@ -266,5 +266,71 @@
         1.0
       ]
     ]
+  },
+  {
+    "name": "login_munhae",
+    "queue": [
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/login_munhae.log",
+        1,
+        1.0
+      ]
+    ]
+  },
+  {
+    "name": "login_munhae2",
+    "queue": [
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/munhae_login2.log",
+        1,
+        1.0
+      ]
+    ]
+  },
+  {
+    "name": "kw10016",
+    "queue": [
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log/adb_20250916_092846.log",
+        1,
+        1.0
+      ]
+    ]
+  },
+  {
+    "name": "kw20016",
+    "queue": [
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log/adb_20250916_092846_2.log",
+        1,
+        1.0
+      ]
+    ]
+  },
+  {
+    "name": "kw30016",
+    "queue": [
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log/adb_20250916_092846_3.log",
+        1,
+        1.0
+      ]
+    ]
+  },
+  {
+    "name": "space_login",
+    "queue": [
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log/adb_20250916_133911.log",
+        1,
+        1.0
+      ]
+    ]
   }
 ]

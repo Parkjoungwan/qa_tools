@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Orbit/Web Graph — smooth ring relayout + zoom/pan + edges + neighbor follow + add/remove FX</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg:#0b0f14; --fg:#cfe8ff; --muted:#7d8da3; }
+    html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:'Noto Sans KR', Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
+    #topbar{position:fixed;left:10px;top:10px;display:flex;gap:8px;z-index:10}
+    #topbar button{background:rgba(124,192,255,.12);color:var(--fg);border:1px solid rgba(124,192,255,.25);border-radius:10px;padding:6px 10px;font-size:12px;cursor:pointer}
+    #topbar button:hover{background:rgba(124,192,255,.22)}
+    #stage{display:block;width:100%;height:100%;cursor:grab;touch-action:none}
+    #stage.drag{cursor:grabbing}
+    /* Modal styles */
+    #confirmBackdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:saturate(60%) blur(2px);z-index:20}
+    #confirmModal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:21}
+    #confirmModal .modal-card{min-width:260px;max-width:90vw;background:rgba(16,22,28,.98);border:1px solid rgba(124,192,255,.25);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.35);padding:16px}
+    #confirmModal .modal-title{font-weight:700;margin-bottom:12px}
+    #confirmModal .modal-actions{display:flex;gap:8px;justify-content:flex-end}
+    #confirmModal .modal-btn{background:rgba(124,192,255,.12);color:var(--fg);border:1px solid rgba(124,192,255,.25);border-radius:10px;padding:6px 12px;font-size:13px;cursor:pointer}
+    #confirmModal .modal-btn:hover{background:rgba(124,192,255,.22)}
+    #confirmModal .modal-btn.danger{border-color:rgba(255,110,110,.4); background:rgba(255,110,110,.1)}
+    #confirmModal .modal-btn.danger:hover{background:rgba(255,110,110,.2)}
+  </style>
+</head>
+<body>
+  <div id="topbar">
+    <button id="toggleLayout" aria-pressed="true">Layout: Orbit</button>
+    <button id="toggleEdges" aria-pressed="true">Edges: On</button>
+    <button id="shuffle">Shuffle</button>
+    <button id="addNode">Add Node</button>
+  </div>
+  <canvas id="stage"></canvas>
+  <!-- Confirm Delete Modal -->
+  <div id="confirmBackdrop" style="display:none"></div>
+  <div id="confirmModal" role="dialog" aria-modal="true" aria-labelledby="confirmTitle" style="display:none">
+    <div class="modal-card">
+      <div id="confirmTitle" class="modal-title">삭제하시겠습니까?</div>
+      <div class="modal-actions">
+        <button id="btnCancel" class="modal-btn">취소</button>
+        <button id="btnDelete" class="modal-btn danger">삭제</button>
+      </div>
+    </div>
+  </div>
+<script>
+(function(){
+  'use strict';
+  const canvas=document.getElementById('stage');
+  const ctx=canvas.getContext('2d');
+  const DPR=window.devicePixelRatio||1;
+
+  // ===== Params =====
+  const N0=30; // initial nodes
+  const R_BASE=110, R_STEP=70, R_JITTER=8;
+  const SPEED_BASE=0.8, SPEED_FALLOFF=0.55;
+  // Web physics
+  const WEB_K=2.0, WEB_DAMP=0.86, WEB_CENTER_PULL=0.18, WEB_REPULSE=2200, WEB_MIN_DIST=36, COLLISION_ITER=2;
+  const FOLLOW_K=6.0; // neighbor follow strength
+  // Orbit transition/drag
+  const ORBIT_TWEEN=1.5, ORBIT_DRAG_DECAY=0.85;
+  const ORBIT_RELAYOUT_DUR=1.0; // ring 구조 바뀔 때 매끄러운 보간 시간
+
+  // Camera (world origin = orbit center)
+  let camScale=1, camX=0, camY=0, camTX=0, camTY=0, camVX=0, camVY=0;
+  const MIN_SCALE=0.4, MAX_SCALE=4.0; const CAM_K=12.0, CAM_C=6.5;
+  // wobble of nodes when camera snaps
+  let wobbleX=0, wobbleY=0, wobbleVX=0, wobbleVY=0; const WOB_K=22.0, WOB_C=7.5, WOB_GAIN=0.18;
+
+  // ===== State =====
+  let nodes=[], edges=[]; let showEdges=true; let nextId=0;
+  let orbitMix=1, orbitTarget=1, orbitActive=true; // 0=Web, 1=Orbit
+
+  let dragging=false, dragIndex=-1; // node-drag state
+  let pointerWX=0, pointerWY=0, dragOffX=0, dragOffY=0;
+  // panning state
+  let isPanning=false, panStartSX=0, panStartSY=0, panCamX0=0, panCamY0=0, panLastSX=0, panLastSY=0, panLastT=0, panVelX=0, panVelY=0;
+
+  // ring 페이드 전환 상태(새 링 등장/소멸 시 시각적 부드러움)
+  let ringTransition=null; // {t,dur, prev:Set<number>, next:Set<number>}
+
+  function resize(){canvas.width=innerWidth*DPR;canvas.height=innerHeight*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);} resize(); window.addEventListener('resize',resize);
+
+  // ===== Graph Types =====
+  class Node{
+    constructor(i){
+      this.id=i; this.size=6+Math.random()*3; this.label=String(i);
+      this.ring=1; this.radius=0; this.angle=Math.random()*Math.PI*2; this.omega=0;
+      this.x=0; this.y=0;           // blended (render)
+      this.offX=0; this.offY=0;     // orbit drag offset
+      this.freeX=0; this.freeY=0;   // web anchor
+      this.vx=0; this.vy=0;         // web velocity
+      this.pinned=false;            // web fixed after release
+      // animation state
+      this.animMode=null;           // 'enter' | 'exit' | null
+      this.animT=0; this.animDur=1; // seconds
+      this.startX=0; this.startY=0; this.targetX=0; this.targetY=0;
+      this.scaleX=1; this.scaleY=1; // squash/stretch for FX
+      this.fade=1;                  // edge/node alpha during anim
+      // orbit relayout target & tween
+      this.jitter=(Math.random()*2-1)*R_JITTER; // 링 반경의 개인차(보간간 일관성 유지)
+      this.orbitTarget={ring:1, radius:0, omega:0};
+      this.orbitMorph=null; // {t,dur, fromR,toR, fromOm,toOm, fromRing,toRing}
+    }
+  }
+
+  class Edge{ constructor(a,b){ this.a=a; this.b=b; } }
+
+  // ===== Orbit target 계산 & 적용 =====
+  function computeOrbitTargets(){
+    const deg=Array(nodes.length).fill(0); for(const e of edges){ if(deg[e.a]!=null) deg[e.a]++; if(deg[e.b]!=null) deg[e.b]++; }
+    // choose center as max degree (fallback 0)
+    let center=0, maxD=-1; for(let i=0;i<deg.length;i++){ if(deg[i]>maxD){ maxD=deg[i]; center=i; } }
+    const uniqueDegs=Array.from(new Set(deg.filter((_,i)=>i!==center))).sort((a,b)=>b-a);
+    const d2ring=new Map(); uniqueDegs.forEach((d,idx)=> d2ring.set(d, idx+1));
+    for(let i=0;i<nodes.length;i++){
+      const n=nodes[i];
+      if(i===center){ n.orbitTarget={ring:0, radius:0, omega:0}; }
+      else{
+        const ring=d2ring.get(deg[i]) || (uniqueDegs.length+1);
+        const baseR=R_BASE+(ring-1)*R_STEP;
+        const radius=baseR+n.jitter;
+        const omega=SPEED_BASE*Math.pow(SPEED_FALLOFF, ring-1)*((ring%2===0)?1:-1);
+        n.orbitTarget={ring, radius, omega};
+      }
+    }
+    // ringTransition 준비
+    const prev=new Set(nodes.map(n=>n.ring).filter(r=>r>0));
+    const next=new Set(nodes.map(n=>n.orbitTarget.ring).filter(r=>r>0));
+    ringTransition={t:0, dur:ORBIT_RELAYOUT_DUR, prev, next};
+  }
+
+  function applyOrbitTargetsInstant(){
+    for(const n of nodes){ const t=n.orbitTarget; if(!t) continue; n.ring=t.ring; n.radius=t.radius; n.omega=t.omega; }
+  }
+
+  function startOrbitRelayout(){
+    computeOrbitTargets();
+    for(const n of nodes){ const t=n.orbitTarget; if(!t) continue; n.orbitMorph={t:0, dur:ORBIT_RELAYOUT_DUR, fromR:n.radius, toR:t.radius, fromOm:n.omega, toOm:t.omega, fromRing:n.ring, toRing:t.ring}; }
+  }
+
+  // ===== Build Graph =====
+  function makeGraph(){
+    nodes=Array.from({length:N0},(_,i)=>new Node(i));
+    edges=[]; const seen=new Set(); const key=(i,j)=> i<j? i+':'+j: j+':'+i;
+    // base cycle
+    for(let i=0;i<nodes.length;i++){ const j=(i+1)%nodes.length; seen.add(key(i,j)); edges.push(new Edge(i,j)); }
+    // random chords
+    for(let i=0;i<nodes.length;i++){
+      const extra=1+Math.floor(Math.random()*3);
+      for(let k=0;k<extra;k++){
+        let j=i; while(j===i || seen.has(key(i,j))) j=Math.floor(Math.random()*nodes.length);
+        seen.add(key(i,j)); edges.push(new Edge(i,j));
+      }
+    }
+    // 초기 타깃 계산 후 즉시 적용(초기엔 부드러운 보간 불필요)
+    computeOrbitTargets();
+    applyOrbitTargetsInstant();
+    for(const n of nodes){ const ox=Math.cos(n.angle)*n.radius, oy=Math.sin(n.angle)*n.radius; n.x=ox; n.y=oy; n.freeX=ox; n.freeY=oy; n.vx=0; n.vy=0; n.offX=0; n.offY=0; n.pinned=false; n.animMode=null; n.fade=1; n.scaleX=1; n.scaleY=1; }
+    nextId = nodes.length;
+  }
+
+  // ===== Camera helpers =====
+  function viewCenter(){ return {cx:canvas.width/DPR/2, cy:canvas.height/DPR/2}; }
+  function worldToScreen(wx,wy){ const {cx,cy}=viewCenter(); return {x:cx+(wx-camX)*camScale, y:cy+(wy-camY)*camScale}; }
+  function screenToWorld(sx,sy){ const {cx,cy}=viewCenter(); return {x:camX+(sx-cx)/camScale, y:camY+(sy-cy)/camScale}; }
+  function setScaleAroundPoint(newScale, anchorSX, anchorSY){
+    const before=screenToWorld(anchorSX,anchorSY);
+    camScale=Math.max(MIN_SCALE, Math.min(MAX_SCALE, newScale));
+    const after=screenToWorld(anchorSX,anchorSY);
+    camX+=before.x-after.x; camY+=before.y-after.y;
+  }
+
+  // wheel zoom ALWAYS around center node (world 0,0)
+  canvas.addEventListener('wheel', (e)=>{
+    e.preventDefault();
+    const ctr=worldToScreen(0,0);
+    const factor=Math.exp(-e.deltaY*0.0015);
+    setScaleAroundPoint(camScale*factor, ctr.x, ctr.y);
+  }, {passive:false});
+
+  // ===== Interaction =====
+  function pickNode(sx,sy){ let best=-1,bd=1e9; for(let i=0;i<nodes.length;i++){ const n=nodes[i]; const p=worldToScreen(n.x,n.y); const dx=sx-p.x, dy=sy-p.y; const d2=dx*dx+dy*dy; const r=Math.max(10,(n.size+6)*camScale*0.9); if(d2<r*r && d2<bd){ best=i; bd=d2; } } return best; }
+
+  function onDown(e){ const sx=e.clientX, sy=e.clientY; const i=pickNode(sx,sy);
+    if(i<0){ // start panning background
+      isPanning=true; dragging=false; dragIndex=-1; canvas.classList.add('drag');
+      panStartSX=sx; panStartSY=sy; panCamX0=camX; panCamY0=camY; panLastSX=sx; panLastSY=sy; panLastT=performance.now(); panVelX=0; panVelY=0; return; }
+    dragging=true; dragIndex=i; canvas.classList.add('drag');
+    const n=nodes[i]; const w=screenToWorld(sx,sy); pointerWX=w.x; pointerWY=w.y; dragOffX=w.x-n.x; dragOffY=w.y-n.y; }
+
+  function onMove(e){ const sx=e.clientX, sy=e.clientY; if(isPanning){ const now=performance.now(); camX=panCamX0-(sx-panStartSX)/camScale; camY=panCamY0-(sy-panStartSY)/camScale; const dt=Math.max(1e-3,(now-panLastT)/1000); panVelX=-((sx-panLastSX)/camScale)/dt; panVelY=-((sy-panLastSY)/camScale)/dt; panLastSX=sx; panLastSY=sy; panLastT=now; camTX=camX; camTY=camY; camVX=0; camVY=0; return; }
+    if(!dragging) return; const w=screenToWorld(sx,sy); pointerWX=w.x; pointerWY=w.y; const n=nodes[dragIndex];
+    if(orbitMix>0.5){ const ox=Math.cos(n.angle)*n.radius, oy=Math.sin(n.angle)*n.radius; n.offX=w.x-ox; n.offY=w.y-oy; }
+    else { n.freeX=w.x-dragOffX; n.freeY=w.y-dragOffY; n.pinned=true; }
+  }
+
+  function onUp(){ if(isPanning){ camTX=0; camTY=0; camVX=panVelX; camVY=panVelY; wobbleVX+=panVelX*WOB_GAIN; wobbleVY+=panVelY*WOB_GAIN; }
+    isPanning=false; dragging=false; dragIndex=-1; canvas.classList.remove('drag'); }
+
+  canvas.addEventListener('mousedown',onDown); window.addEventListener('mousemove',onMove); window.addEventListener('mouseup',onUp); canvas.addEventListener('contextmenu',onContextMenu);
+
+  // ===== Step =====
+  const easeInOut=(t)=>t<0.5? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
+  const easeOutBack=(p)=>{ const s=1.70158; return (p-1)*(p-1)*((s+1)*(p-1)+s)+1; };
+
+  function step(dt){
+    // layout tween
+    if(Math.abs(orbitMix-orbitTarget)>1e-4){ const dir=Math.sign(orbitTarget-orbitMix); orbitMix=Math.min(1,Math.max(0,orbitMix+dir*ORBIT_TWEEN*dt)); orbitActive=(orbitMix===1)?true:(orbitMix===0?false:orbitActive); }
+
+    // camera spring (snap back to origin when not panning)
+    if(!isPanning){ const ax=CAM_K*(camTX-camX)-CAM_C*camVX; const ay=CAM_K*(camTY-camY)-CAM_C*camVY; camVX+=ax*dt; camVY+=ay*dt; camX+=camVX*dt; camY+=camVY*dt; }
+
+    // wobble spring (nodes react to camera snap)
+    const wx=-WOB_K*wobbleX - WOB_C*wobbleVX; const wy=-WOB_K*wobbleY - WOB_C*wobbleVY; wobbleVX+=wx*dt; wobbleVY+=wy*dt; wobbleX+=wobbleVX*dt; wobbleY+=wobbleVY*dt;
+
+    // orbit relayout tween (반지름/속도 보간)
+    for(const n of nodes){
+      if(n.orbitMorph){ n.orbitMorph.t=Math.min(1, n.orbitMorph.t + dt/n.orbitMorph.dur); const s=easeInOut(n.orbitMorph.t); n.radius = n.orbitMorph.fromR + (n.orbitMorph.toR - n.orbitMorph.fromR)*s; n.omega = n.orbitMorph.fromOm + (n.orbitMorph.toOm - n.orbitMorph.fromOm)*s; if(n.orbitMorph.t>=1){ n.ring=n.orbitMorph.toRing; n.orbitMorph=null; } }
+    }
+    if(ringTransition){ ringTransition.t=Math.min(1, ringTransition.t + dt/ringTransition.dur); if(ringTransition.t>=1) ringTransition=null; }
+
+    // handle node animations (enter/exit)
+    for(let idx=0; idx<nodes.length; idx++){
+      const n=nodes[idx]; if(!n.animMode) continue; n.animT += dt; const t=Math.min(1, n.animT / n.animDur);
+      if(n.animMode==='enter'){
+        const tt = easeOutBack(t);
+        n.x = n.startX + (n.targetX - n.startX) * tt;
+        n.y = n.startY + (n.targetY - n.startY) * tt;
+        n.freeX = n.x; n.freeY = n.y;
+        n.fade = t; n.scaleX = 1 + 0.12*(1-t); n.scaleY = 1 - 0.08*(1-t);
+        if(t>=1){ n.animMode=null; n.scaleX=1; n.scaleY=1; n.fade=1; }
+      } else if(n.animMode==='exit'){
+        if(t<0.7){ const s=t/0.7; n.x = n.startX + (n.targetX - n.startX) * s; n.y = n.startY + (n.targetY - n.startY) * s; n.scaleX=1.15; n.scaleY=0.85; }
+        else { const tt=(t-0.7)/0.3; const wob = Math.sin(tt*8*Math.PI) * (1-tt) * 6; const dx=n.targetX-n.startX, dy=n.targetY-n.startY; const L=Math.hypot(dx,dy)||1; const nx=-dy/L, ny=dx/L; n.x = n.targetX + nx*wob; n.y = n.targetY + ny*wob; const squ = 1 + 0.3*(1-tt); n.scaleX = squ; n.scaleY = 1/squ; n.fade = Math.max(0, 1 - tt*1.2); }
+        if(t>=1){ // remove node & edges
+          const removeIdx = nodes.indexOf(n);
+          if(removeIdx>=0){
+            edges = edges.filter(e=> e.a!==removeIdx && e.b!==removeIdx);
+            nodes.splice(removeIdx,1);
+            for(const e of edges){ if(e.a>removeIdx) e.a--; if(e.b>removeIdx) e.b--; }
+            // 삭제 후 새 링 구조로 부드럽게 이동
+            startOrbitRelayout();
+          }
+          break; // nodes array changed; break loop safety
+        }
+      }
+    }
+
+    // Web forces
+    const fx=new Array(nodes.length).fill(0), fy=new Array(nodes.length).fill(0);
+    for(const e of edges){ const a=e.a,b=e.b, na=nodes[a], nb=nodes[b]; const dx=nb.freeX-na.freeX, dy=nb.freeY-na.freeY; fx[a]+=WEB_K*dx; fy[a]+=WEB_K*dy; fx[b]-=WEB_K*dx; fy[b]-=WEB_K*dy; }
+    for(let i=0;i<nodes.length;i++){ const n=nodes[i]; fx[i]+=WEB_CENTER_PULL*(0-n.freeX); fy[i]+=WEB_CENTER_PULL*(0-n.freeY); }
+    if(dragging && orbitMix<0.5 && dragIndex>=0){ const dI=dragIndex; const dragged=nodes[dI]; for(const e of edges){ if(e.a===dI || e.b===dI){ const j=(e.a===dI? e.b: e.a); const m=nodes[j]; fx[j]+=FOLLOW_K*(dragged.freeX-m.freeX); fy[j]+=FOLLOW_K*(dragged.freeY-m.freeY); } } }
+    if(orbitMix<0.5){ for(let i=0;i<nodes.length;i++){ for(let j=i+1;j<nodes.length;j++){ const a=nodes[i], b=nodes[j]; let dx=b.freeX-a.freeX, dy=b.freeY-a.freeY; let d2=dx*dx+dy*dy+1e-3; let dist=Math.sqrt(d2); const nx=dx/dist, ny=dy/dist; const F=WEB_REPULSE/d2; fx[i]-=F*nx; fy[i]-=F*ny; fx[j]+=F*nx; fy[j]+=F*ny; } } }
+
+    if(dragging && orbitMix<=0.5 && dragIndex>=0){ const n=nodes[dragIndex]; n.freeX=pointerWX; n.freeY=pointerWY; n.vx=0; n.vy=0; }
+
+    for(let i=0;i<nodes.length;i++){
+      const n=nodes[i];
+      if(orbitMix<=0.5 && (n.pinned || n.animMode==='exit') && !(dragging && nodes[dragIndex]===n)){
+        n.vx=0; n.vy=0; // keep fixed during web + exit anim
+      } else {
+        n.vx=(n.vx+fx[i]*dt)*WEB_DAMP; n.vy=(n.vy+fy[i]*dt)*WEB_DAMP; n.freeX+=n.vx*dt; n.freeY+=n.vy*dt;
+      }
+    }
+
+    // collision solver (web only)
+    if(orbitMix<0.5){
+      for(let it=0; it<COLLISION_ITER; it++){
+        for(let i=0;i<nodes.length;i++){
+          for(let j=i+1;j<nodes.length;j++){
+            const a=nodes[i], b=nodes[j];
+            let dx=b.freeX-a.freeX, dy=b.freeY-a.freeY; let dist=Math.hypot(dx,dy);
+            if(dist===0){ dx=(Math.random()-0.5)*1e-3; dy=(Math.random()-0.5)*1e-3; dist=Math.hypot(dx,dy);} 
+            const minD=Math.max(WEB_MIN_DIST, a.size+b.size+8);
+            if(dist<minD){ const overlap=(minD-dist)/2; const nx=dx/dist, ny=dy/dist; const moveA=!(dragging && nodes[dragIndex]===a)&&!a.pinned&&a.animMode!=='exit'; const moveB=!(dragging && nodes[dragIndex]===b)&&!b.pinned&&b.animMode!=='exit'; if(moveA){ a.freeX-=nx*overlap; a.freeY-=ny*overlap; } if(moveB){ b.freeX+=nx*overlap; b.freeY+=ny*overlap; } }
+          }
+        }
+      }
+    }
+
+    // orbit advance & drag-offset decay
+    for(const n of nodes){ if(orbitActive && !(dragging && orbitMix>0.5 && nodes[dragIndex]===n)) n.angle+=n.omega*dt; }
+    if(orbitMix>0.5){ for(const n of nodes){ if(!(dragging && nodes[dragIndex]===n)) { n.offX*=ORBIT_DRAG_DECAY; n.offY*=ORBIT_DRAG_DECAY; } } } else { for(const n of nodes){ n.offX=0; n.offY=0; } }
+
+    // blended output + keep animating nodes' x/y
+    for(const n of nodes){
+      const ox=Math.cos(n.angle)*n.radius, oy=Math.sin(n.angle)*n.radius;
+      const orbitX=ox+n.offX, orbitY=oy+n.offY;
+      const webX=n.freeX, webY=n.freeY;
+      const rx = webX*(1-orbitMix)+orbitX*orbitMix;
+      const ry = webY*(1-orbitMix)+orbitY*orbitMix;
+      if(!n.animMode){ n.x = rx; n.y = ry; }
+    }
+  }
+
+  // ===== Draw =====
+  function draw(){ const W=canvas.width/DPR, H=canvas.height/DPR; ctx.clearRect(0,0,W,H); const {cx,cy}=viewCenter(); ctx.save(); ctx.translate(cx,cy); ctx.scale(camScale,camScale); ctx.translate(-camX,-camY); ctx.translate(wobbleX, wobbleY);
+    // orbit rings — 부드러운 등장/사라짐
+    const baseAlpha = 0.18*orbitMix;
+    if(ringTransition){
+      const s=easeInOut(ringTransition.t);
+      ctx.lineWidth=1/camScale;
+      for(const r of ringTransition.prev){ const rad=R_BASE+(r-1)*R_STEP; ctx.strokeStyle=`rgba(124,192,255,${(baseAlpha*(1-s)).toFixed(3)})`; ctx.beginPath(); ctx.arc(0,0,rad,0,Math.PI*2); ctx.stroke(); }
+      for(const r of ringTransition.next){ const rad=R_BASE+(r-1)*R_STEP; ctx.strokeStyle=`rgba(124,192,255,${(baseAlpha*s).toFixed(3)})`; ctx.beginPath(); ctx.arc(0,0,rad,0,Math.PI*2); ctx.stroke(); }
+    } else if(orbitMix>0) {
+      const used=new Set(nodes.filter(n=>n.ring>0).map(n=>n.ring)); ctx.lineWidth=1/camScale; ctx.strokeStyle=`rgba(124,192,255,${baseAlpha.toFixed(3)})`; for(const r of Array.from(used).sort((a,b)=>a-b)){ const rad=R_BASE+(r-1)*R_STEP; ctx.beginPath(); ctx.arc(0,0,rad,0,Math.PI*2); ctx.stroke(); }
+    }
+
+    // edges
+    if(showEdges){ ctx.lineWidth=1.1/camScale; for(const e of edges){ const a=nodes[e.a], b=nodes[e.b]; const alpha=Math.min(a?.fade??1,b?.fade??1)*0.35; if(!a||!b||alpha<=0) continue; ctx.strokeStyle=`rgba(124,192,255,${alpha.toFixed(3)})`; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); } }
+    // nodes
+    for(const n of nodes){ const alpha=n.fade; if(alpha<=0) continue; ctx.save(); ctx.translate(n.x,n.y); ctx.scale(n.scaleX, n.scaleY); ctx.beginPath(); ctx.fillStyle=`rgba(124,192,255,${(0.16*alpha).toFixed(3)})`; ctx.arc(0,0,n.size+6,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.fillStyle=`rgba(207,232,255,${alpha.toFixed(3)})`; ctx.arc(0,0,n.size,0,Math.PI*2); ctx.fill(); ctx.restore(); }
+    ctx.restore(); }
+
+  // ===== Loop =====
+  let last=performance.now(); function loop(now){ const dt=Math.min(0.05,(now-last)/1000); last=now; step(dt); draw(); requestAnimationFrame(loop); }
+
+  // ===== Add/Delete (animated) =====
+  function screenSize(){ return {W: canvas.width/DPR, H: canvas.height/DPR}; }
+  function pickNearestEdgeScreen(x,y){ const {W,H}=screenSize(); const dLeft=x, dRight=W-x, dTop=y, dBottom=H-y; const min=Math.min(dLeft,dRight,dTop,dBottom); if(min===dLeft) return {side:'left', tx:-40, ty:y}; if(min===dRight) return {side:'right', tx:W+40, ty:y}; if(min===dTop) return {side:'top', tx:x, ty:-40}; return {side:'bottom', tx:x, ty:H+40}; }
+
+  function addNodeAnimated(){
+    const newIndex = nodes.length; // will become index after push
+    const n = new Node(nextId++);
+    // connect to 2..4 random existing nodes (if any)
+    const connectN = nodes.length>0 ? (2 + Math.floor(Math.random()*3)) : 0; // 2-4
+    if(connectN>0){ const candidates=[...Array(nodes.length).keys()]; for(let t=0;t<connectN && candidates.length>0;t++){ const idx=Math.floor(Math.random()*candidates.length); const j=candidates.splice(idx,1)[0]; edges.push(new Edge(newIndex, j)); } }
+    nodes.push(n);
+
+    // offscreen start
+    const {W,H}=screenSize(); const sides=['left','right','top','bottom']; const side=sides[Math.floor(Math.random()*sides.length)]; let sx,sy; if(side==='left'){ sx=-60; sy=Math.random()*H; } else if(side==='right'){ sx=W+60; sy=Math.random()*H; } else if(side==='top'){ sx=Math.random()*W; sy=-60; } else { sx=Math.random()*W; sy=H+60; }
+    const start = screenToWorld(sx,sy);
+
+    // 새 구조 목표 계산 + 링 보간 시작
+    startOrbitRelayout();
+
+    if(orbitTarget===1){ // Orbit: 타깃 궤도로 부드럽게 이동(enter)
+      const tt=n.orbitTarget; const ox=Math.cos(n.angle)*tt.radius, oy=Math.sin(n.angle)*tt.radius;
+      n.startX=start.x; n.startY=start.y; n.targetX=ox; n.targetY=oy; n.x=n.startX; n.y=n.startY; n.freeX=n.x; n.freeY=n.y; n.animMode='enter'; n.animDur=1.1; n.animT=0; n.fade=0; n.scaleX=1.2; n.scaleY=0.85;
+    } else { // Web: 이웃 평균 또는 원점으로 슬라이드-인
+      let tx=0, ty=0, cnt=0; for(const e of edges){ if(e.a===newIndex){ tx+=nodes[e.b].freeX; ty+=nodes[e.b].freeY; cnt++; } else if(e.b===newIndex){ tx+=nodes[e.a].freeX; ty+=nodes[e.a].freeY; cnt++; } }
+      if(cnt>0){ tx/=cnt; ty/=cnt; } else { tx=0; ty=0; }
+      n.startX=start.x; n.startY=start.y; n.targetX=tx; n.targetY=ty; n.x=n.startX; n.y=n.startY; n.freeX=n.x; n.freeY=n.y; n.animMode='enter'; n.animDur=1.0; n.animT=0; n.fade=0; n.scaleX=1.2; n.scaleY=0.85; const vx=(tx-n.startX), vy=(ty-n.startY); const L=Math.hypot(vx,vy)||1; n.vx += (vx/L)*50; n.vy += (vy/L)*50;
+    }
+  }
+
+  function onContextMenu(e){
+    e.preventDefault();
+    if(showingConfirm) return; // already open
+    const sx=e.clientX, sy=e.clientY; const i=pickNode(sx,sy); if(i<0) return;
+    pendingDeleteIndex=i; openConfirm();
+  }
+
+  // ===== Confirm Modal Logic =====
+  let pendingDeleteIndex=-1, showingConfirm=false;
+  const backdrop=document.getElementById('confirmBackdrop');
+  const modal=document.getElementById('confirmModal');
+  const btnCancel=document.getElementById('btnCancel');
+  const btnDelete=document.getElementById('btnDelete');
+  function openConfirm(){ showingConfirm=true; backdrop.style.display='block'; modal.style.display='flex'; btnDelete.focus(); }
+  function closeConfirm(){ showingConfirm=false; backdrop.style.display='none'; modal.style.display='none'; }
+  backdrop.addEventListener('click', ()=>{ closeConfirm(); pendingDeleteIndex=-1; });
+  btnCancel.addEventListener('click', ()=>{ closeConfirm(); pendingDeleteIndex=-1; });
+  window.addEventListener('keydown', (ev)=>{ if(!showingConfirm) return; if(ev.key==='Escape'){ closeConfirm(); pendingDeleteIndex=-1; } });
+  btnDelete.addEventListener('click', ()=>{
+    if(pendingDeleteIndex<0){ closeConfirm(); return; }
+    const n=nodes[pendingDeleteIndex];
+    if(!n){ closeConfirm(); pendingDeleteIndex=-1; return; }
+    const sp = worldToScreen(n.x,n.y); const tgt = pickNearestEdgeScreen(sp.x, sp.y); const worldT = screenToWorld(tgt.tx, tgt.ty);
+    n.animMode='exit'; n.animT=0; n.animDur=1.1; n.startX=n.x; n.startY=n.y; n.targetX=worldT.x; n.targetY=worldT.y; n.pinned=true; n.scaleX=1.15; n.scaleY=0.85;
+    closeConfirm(); pendingDeleteIndex=-1;
+  });
+
+  // ===== UI =====
+  const btnLayout=document.getElementById('toggleLayout');
+  const btnEdges=document.getElementById('toggleEdges');
+  const btnShuffle=document.getElementById('shuffle');
+  const btnAdd=document.getElementById('addNode');
+  btnLayout.addEventListener('click',()=>{ if(orbitTarget===1){ for(const n of nodes){ n.freeX=n.x; n.freeY=n.y; } orbitTarget=0; orbitActive=false; btnLayout.textContent='Layout: Web'; btnLayout.setAttribute('aria-pressed','false'); } else { for(const n of nodes){ n.pinned=false; } orbitTarget=1; orbitActive=true; btnLayout.textContent='Layout: Orbit'; btnLayout.setAttribute('aria-pressed','true'); } });
+  btnEdges.addEventListener('click',()=>{ showEdges=!showEdges; btnEdges.textContent=showEdges?'Edges: On':'Edges: Off'; btnEdges.setAttribute('aria-pressed', showEdges?'true':'false'); });
+  btnShuffle.addEventListener('click',()=>{ makeGraph(); });
+  btnAdd.addEventListener('click',()=>{ addNodeAnimated(); });
+
+  // ===== Dev Tests (runtime assertions) =====
+  function devTests(){
+    try{
+      console.groupCollapsed('%cDevTests','color:#9cf');
+      console.assert(typeof Node==='function' && typeof Edge==='function', 'Node/Edge class defined');
+      const c=worldToScreen(0,0); const w=screenToWorld(c.x,c.y); console.assert(Math.abs(w.x)<1e-6 && Math.abs(w.y)<1e-6, 'world<->screen roundtrip @origin');
+      const ringsNow = new Set(nodes.filter(n=>n.ring>0).map(n=>n.ring)); for(const r of ringsNow){ const rad=R_BASE+(r-1)*R_STEP; console.assert(rad>0,'ring radius positive'); }
+      const n0=nodes.length, e0=edges.length; addNodeAnimated(); const n1=nodes.length, e1=edges.length; console.assert(n1===n0+1,'add node length'); console.assert(n0===0 || e1>=e0+2, 'add node adds edges when graph non-empty');
+      // trigger removal test by deleting the last node via synthetic exit
+      const last=nodes[nodes.length-1]; last.animMode='exit'; last.animT=0; last.animDur=0.2; last.startX=last.x; last.startY=last.y; const sc=worldToScreen(last.x,last.y); const edge=pickNearestEdgeScreen(sc.x,sc.y); const wt=screenToWorld(edge.tx,edge.ty); last.targetX=wt.x; last.targetY=wt.y; last.pinned=true; // fast remove
+      console.groupEnd();
+    }catch(err){ console.error('DevTests error', err); }
+  }
+
+  // ===== Start =====
+  makeGraph(); devTests(); requestAnimationFrame(loop);
+})();
+</script>
+</body>
+</html>
+

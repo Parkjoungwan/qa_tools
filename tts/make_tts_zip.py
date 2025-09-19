@@ -8,7 +8,10 @@ RATE = "-5%"                     # 말속도 약간 느리게(차분한 느낌)
 VOLUME = "+0%"                   # 기본 볼륨
 
 LINES = {
-    "long2.mp3": "그런게 가능할리가 없잖아요. 여기가 무슨 궁전도 아니고.",
+    "gurimja.mp3": "그림자",
+    "woosan.mp3": "우산",
+    "chunmak.mp3": "천막",
+    "garimpan.mp3": "가림판"
 }
 
 async def synth_one(filename: str, text: str):

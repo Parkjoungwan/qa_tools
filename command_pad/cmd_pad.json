@@ -72,13 +72,18 @@
     "config": {
       "PKG": "com.kyowon.literacy",
       "DEVICE1": "520068a9435db5d5",
-      "DEVICE2": "SERIAL_B_REPLACE_ME"
+      "DEVICE2": "R54N904KPDB"
     },
     "commands": [
       {
         "name": "rebootApp_1",
         "script": "rebootApp.sh",
         "args": "1"
+      },
+      {
+        "name": "rebootApp_2",
+        "script": "rebootApp.sh",
+        "args": "2"
       },
       {
         "name": "clearData_1",

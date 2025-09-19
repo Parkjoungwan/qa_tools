@@ -3,4 +3,7 @@ numpy
 opencv-python
 scikit-image
 graphviz
-\npython-dotenv
+python-dotenv
+platformdirs
+uiautomator2
+easyocr
