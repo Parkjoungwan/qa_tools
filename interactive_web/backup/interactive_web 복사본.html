@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Orbit/Web Graph — smooth relayout + zoom/pan + edges + neighbor follow + add/remove + focus UX</title>
+  <title>Orbit/Web Graph — smooth ring relayout + zoom/pan + edges + neighbor follow + add/remove FX</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet">
@@ -63,9 +63,6 @@
   // Orbit transition/drag
   const ORBIT_TWEEN=1.5, ORBIT_DRAG_DECAY=0.85;
   const ORBIT_RELAYOUT_DUR=1.0; // ring 구조 바뀔 때 매끄러운 보간 시간
-  // Hover/Focus UX
-  const FOCUS_NEAR_PX=80;   // 근접 확대 시작 거리(스크린 좌표)
-  const HOVER_SPEED=10;     // 포커스 보간 속도
 
   // Camera (world origin = orbit center)
   let camScale=1, camX=0, camY=0, camTX=0, camTY=0, camVX=0, camVY=0;
@@ -82,11 +79,8 @@
   // panning state
   let isPanning=false, panStartSX=0, panStartSY=0, panCamX0=0, panCamY0=0, panLastSX=0, panLastSY=0, panLastT=0, panVelX=0, panVelY=0;
 
-  // ring 페이드 전환 상태
+  // ring 페이드 전환 상태(새 링 등장/소멸 시 시각적 부드러움)
   let ringTransition=null; // {t,dur, prev:Set<number>, next:Set<number>}
-
-  // hover state
-  let hoverIndex=-1, mouseSX=0, mouseSY=0, mouseIn=false;
 
   function resize(){canvas.width=innerWidth*DPR;canvas.height=innerHeight*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);} resize(); window.addEventListener('resize',resize);
 
@@ -106,10 +100,8 @@
       this.startX=0; this.startY=0; this.targetX=0; this.targetY=0;
       this.scaleX=1; this.scaleY=1; // squash/stretch for FX
       this.fade=1;                  // edge/node alpha during anim
-      // UI focus state
-      this.uiScale=1; this.uiTint=0;
       // orbit relayout target & tween
-      this.jitter=(Math.random()*2-1)*R_JITTER; // 개인차
+      this.jitter=(Math.random()*2-1)*R_JITTER; // 링 반경의 개인차(보간간 일관성 유지)
       this.orbitTarget={ring:1, radius:0, omega:0};
       this.orbitMorph=null; // {t,dur, fromR,toR, fromOm,toOm, fromRing,toRing}
     }
@@ -141,7 +133,9 @@
     ringTransition={t:0, dur:ORBIT_RELAYOUT_DUR, prev, next};
   }
 
-  function applyOrbitTargetsInstant(){ for(const n of nodes){ const t=n.orbitTarget; if(!t) continue; n.ring=t.ring; n.radius=t.radius; n.omega=t.omega; } }
+  function applyOrbitTargetsInstant(){
+    for(const n of nodes){ const t=n.orbitTarget; if(!t) continue; n.ring=t.ring; n.radius=t.radius; n.omega=t.omega; }
+  }
 
   function startOrbitRelayout(){
     computeOrbitTargets();
@@ -162,7 +156,7 @@
         seen.add(key(i,j)); edges.push(new Edge(i,j));
       }
     }
-    // 초기 타깃 계산 후 즉시 적용
+    // 초기 타깃 계산 후 즉시 적용(초기엔 부드러운 보간 불필요)
     computeOrbitTargets();
     applyOrbitTargetsInstant();
     for(const n of nodes){ const ox=Math.cos(n.angle)*n.radius, oy=Math.sin(n.angle)*n.radius; n.x=ox; n.y=oy; n.freeX=ox; n.freeY=oy; n.vx=0; n.vy=0; n.offX=0; n.offY=0; n.pinned=false; n.animMode=null; n.fade=1; n.scaleX=1; n.scaleY=1; }
@@ -173,10 +167,20 @@
   function viewCenter(){ return {cx:canvas.width/DPR/2, cy:canvas.height/DPR/2}; }
   function worldToScreen(wx,wy){ const {cx,cy}=viewCenter(); return {x:cx+(wx-camX)*camScale, y:cy+(wy-camY)*camScale}; }
   function screenToWorld(sx,sy){ const {cx,cy}=viewCenter(); return {x:camX+(sx-cx)/camScale, y:camY+(sy-cy)/camScale}; }
-  function setScaleAroundPoint(newScale, anchorSX, anchorSY){ const before=screenToWorld(anchorSX,anchorSY); camScale=Math.max(MIN_SCALE, Math.min(MAX_SCALE, newScale)); const after=screenToWorld(anchorSX,anchorSY); camX+=before.x-after.x; camY+=before.y-after.y; }
+  function setScaleAroundPoint(newScale, anchorSX, anchorSY){
+    const before=screenToWorld(anchorSX,anchorSY);
+    camScale=Math.max(MIN_SCALE, Math.min(MAX_SCALE, newScale));
+    const after=screenToWorld(anchorSX,anchorSY);
+    camX+=before.x-after.x; camY+=before.y-after.y;
+  }
 
   // wheel zoom ALWAYS around center node (world 0,0)
-  canvas.addEventListener('wheel', (e)=>{ e.preventDefault(); const ctr=worldToScreen(0,0); const factor=Math.exp(-e.deltaY*0.0015); setScaleAroundPoint(camScale*factor, ctr.x, ctr.y); }, {passive:false});
+  canvas.addEventListener('wheel', (e)=>{
+    e.preventDefault();
+    const ctr=worldToScreen(0,0);
+    const factor=Math.exp(-e.deltaY*0.0015);
+    setScaleAroundPoint(camScale*factor, ctr.x, ctr.y);
+  }, {passive:false});
 
   // ===== Interaction =====
   function pickNode(sx,sy){ let best=-1,bd=1e9; for(let i=0;i<nodes.length;i++){ const n=nodes[i]; const p=worldToScreen(n.x,n.y); const dx=sx-p.x, dy=sy-p.y; const d2=dx*dx+dy*dy; const r=Math.max(10,(n.size+6)*camScale*0.9); if(d2<r*r && d2<bd){ best=i; bd=d2; } } return best; }
@@ -188,16 +192,16 @@
     dragging=true; dragIndex=i; canvas.classList.add('drag');
     const n=nodes[i]; const w=screenToWorld(sx,sy); pointerWX=w.x; pointerWY=w.y; dragOffX=w.x-n.x; dragOffY=w.y-n.y; }
 
-  function onMove(e){ const sx=e.clientX, sy=e.clientY; mouseSX=sx; mouseSY=sy; mouseIn=true; hoverIndex=pickNode(sx,sy);
-    if(isPanning){ const now=performance.now(); camX=panCamX0-(sx-panStartSX)/camScale; camY=panCamY0-(sy-panStartSY)/camScale; const dt=Math.max(1e-3,(now-panLastT)/1000); panVelX=-((sx-panLastSX)/camScale)/dt; panVelY=-((sy-panLastSY)/camScale)/dt; panLastSX=sx; panLastSY=sy; panLastT=now; camTX=camX; camTY=camY; camVX=0; camVY=0; return; }
+  function onMove(e){ const sx=e.clientX, sy=e.clientY; if(isPanning){ const now=performance.now(); camX=panCamX0-(sx-panStartSX)/camScale; camY=panCamY0-(sy-panStartSY)/camScale; const dt=Math.max(1e-3,(now-panLastT)/1000); panVelX=-((sx-panLastSX)/camScale)/dt; panVelY=-((sy-panLastSY)/camScale)/dt; panLastSX=sx; panLastSY=sy; panLastT=now; camTX=camX; camTY=camY; camVX=0; camVY=0; return; }
     if(!dragging) return; const w=screenToWorld(sx,sy); pointerWX=w.x; pointerWY=w.y; const n=nodes[dragIndex];
     if(orbitMix>0.5){ const ox=Math.cos(n.angle)*n.radius, oy=Math.sin(n.angle)*n.radius; n.offX=w.x-ox; n.offY=w.y-oy; }
-    else { n.freeX=w.x-dragOffX; n.freeY=w.y-dragOffY; n.pinned=true; } }
+    else { n.freeX=w.x-dragOffX; n.freeY=w.y-dragOffY; n.pinned=true; }
+  }
 
   function onUp(){ if(isPanning){ camTX=0; camTY=0; camVX=panVelX; camVY=panVelY; wobbleVX+=panVelX*WOB_GAIN; wobbleVY+=panVelY*WOB_GAIN; }
     isPanning=false; dragging=false; dragIndex=-1; canvas.classList.remove('drag'); }
 
-  canvas.addEventListener('mousedown',onDown); window.addEventListener('mousemove',onMove); window.addEventListener('mouseup',onUp); canvas.addEventListener('contextmenu',onContextMenu); canvas.addEventListener('mouseleave',()=>{ mouseIn=false; hoverIndex=-1; });
+  canvas.addEventListener('mousedown',onDown); window.addEventListener('mousemove',onMove); window.addEventListener('mouseup',onUp); canvas.addEventListener('contextmenu',onContextMenu);
 
   // ===== Step =====
   const easeInOut=(t)=>t<0.5? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
@@ -214,21 +218,34 @@
     const wx=-WOB_K*wobbleX - WOB_C*wobbleVX; const wy=-WOB_K*wobbleY - WOB_C*wobbleVY; wobbleVX+=wx*dt; wobbleVY+=wy*dt; wobbleX+=wobbleVX*dt; wobbleY+=wobbleVY*dt;
 
     // orbit relayout tween (반지름/속도 보간)
-    for(const n of nodes){ if(n.orbitMorph){ n.orbitMorph.t=Math.min(1, n.orbitMorph.t + dt/n.orbitMorph.dur); const s=easeInOut(n.orbitMorph.t); n.radius = n.orbitMorph.fromR + (n.orbitMorph.toR - n.orbitMorph.fromR)*s; n.omega = n.orbitMorph.fromOm + (n.orbitMorph.toOm - n.orbitMorph.fromOm)*s; if(n.orbitMorph.t>=1){ n.ring=n.orbitMorph.toRing; n.orbitMorph=null; } } }
+    for(const n of nodes){
+      if(n.orbitMorph){ n.orbitMorph.t=Math.min(1, n.orbitMorph.t + dt/n.orbitMorph.dur); const s=easeInOut(n.orbitMorph.t); n.radius = n.orbitMorph.fromR + (n.orbitMorph.toR - n.orbitMorph.fromR)*s; n.omega = n.orbitMorph.fromOm + (n.orbitMorph.toOm - n.orbitMorph.fromOm)*s; if(n.orbitMorph.t>=1){ n.ring=n.orbitMorph.toRing; n.orbitMorph=null; } }
+    }
     if(ringTransition){ ringTransition.t=Math.min(1, ringTransition.t + dt/ringTransition.dur); if(ringTransition.t>=1) ringTransition=null; }
 
     // handle node animations (enter/exit)
     for(let idx=0; idx<nodes.length; idx++){
       const n=nodes[idx]; if(!n.animMode) continue; n.animT += dt; const t=Math.min(1, n.animT / n.animDur);
       if(n.animMode==='enter'){
-        const tt = easeOutBack(t); n.x = n.startX + (n.targetX - n.startX) * tt; n.y = n.startY + (n.targetY - n.startY) * tt; n.freeX = n.x; n.freeY = n.y; n.fade = t; n.scaleX = 1 + 0.12*(1-t); n.scaleY = 1 - 0.08*(1-t); if(t>=1){ n.animMode=null; n.scaleX=1; n.scaleY=1; n.fade=1; }
+        const tt = easeOutBack(t);
+        n.x = n.startX + (n.targetX - n.startX) * tt;
+        n.y = n.startY + (n.targetY - n.startY) * tt;
+        n.freeX = n.x; n.freeY = n.y;
+        n.fade = t; n.scaleX = 1 + 0.12*(1-t); n.scaleY = 1 - 0.08*(1-t);
+        if(t>=1){ n.animMode=null; n.scaleX=1; n.scaleY=1; n.fade=1; }
       } else if(n.animMode==='exit'){
         if(t<0.7){ const s=t/0.7; n.x = n.startX + (n.targetX - n.startX) * s; n.y = n.startY + (n.targetY - n.startY) * s; n.scaleX=1.15; n.scaleY=0.85; }
         else { const tt=(t-0.7)/0.3; const wob = Math.sin(tt*8*Math.PI) * (1-tt) * 6; const dx=n.targetX-n.startX, dy=n.targetY-n.startY; const L=Math.hypot(dx,dy)||1; const nx=-dy/L, ny=dx/L; n.x = n.targetX + nx*wob; n.y = n.targetY + ny*wob; const squ = 1 + 0.3*(1-tt); n.scaleX = squ; n.scaleY = 1/squ; n.fade = Math.max(0, 1 - tt*1.2); }
         if(t>=1){ // remove node & edges
           const removeIdx = nodes.indexOf(n);
-          if(removeIdx>=0){ edges = edges.filter(e=> e.a!==removeIdx && e.b!==removeIdx); nodes.splice(removeIdx,1); for(const e of edges){ if(e.a>removeIdx) e.a--; if(e.b>removeIdx) e.b--; } startOrbitRelayout(); }
-          break; // nodes array changed
+          if(removeIdx>=0){
+            edges = edges.filter(e=> e.a!==removeIdx && e.b!==removeIdx);
+            nodes.splice(removeIdx,1);
+            for(const e of edges){ if(e.a>removeIdx) e.a--; if(e.b>removeIdx) e.b--; }
+            // 삭제 후 새 링 구조로 부드럽게 이동
+            startOrbitRelayout();
+          }
+          break; // nodes array changed; break loop safety
         }
       }
     }
@@ -238,7 +255,7 @@
     for(const e of edges){ const a=e.a,b=e.b, na=nodes[a], nb=nodes[b]; const dx=nb.freeX-na.freeX, dy=nb.freeY-na.freeY; fx[a]+=WEB_K*dx; fy[a]+=WEB_K*dy; fx[b]-=WEB_K*dx; fy[b]-=WEB_K*dy; }
     for(let i=0;i<nodes.length;i++){ const n=nodes[i]; fx[i]+=WEB_CENTER_PULL*(0-n.freeX); fy[i]+=WEB_CENTER_PULL*(0-n.freeY); }
     if(dragging && orbitMix<0.5 && dragIndex>=0){ const dI=dragIndex; const dragged=nodes[dI]; for(const e of edges){ if(e.a===dI || e.b===dI){ const j=(e.a===dI? e.b: e.a); const m=nodes[j]; fx[j]+=FOLLOW_K*(dragged.freeX-m.freeX); fy[j]+=FOLLOW_K*(dragged.freeY-m.freeY); } } }
-    if(orbitMix<0.5){ for(let i=0;i<nodes.length;i++){ for(let j=i+1;j<nodes.length;j++){ const a=nodes[i], b=nodes[j]; let dx=b.freeX-a.freeX, dy=b.freeY-a.freeY; let dist=Math.hypot(dx,dy); if(dist===0){ dx=(Math.random()-0.5)*1e-3; dy=(Math.random()-0.5)*1e-3; dist=Math.hypot(dx,dy);} const minD=Math.max(WEB_MIN_DIST, a.size+b.size+8); if(dist<minD){ const overlap=(minD-dist)/2; const nx=dx/dist, ny=dy/dist; const moveA=!(dragging && nodes[dragIndex]===a)&&!a.pinned&&a.animMode!=='exit'; const moveB=!(dragging && nodes[dragIndex]===b)&&!b.pinned&&b.animMode!=='exit'; if(moveA){ a.freeX-=nx*overlap; a.freeY-=ny*overlap; } if(moveB){ b.freeX+=nx*overlap; b.freeY+=ny*overlap; } } } } }
+    if(orbitMix<0.5){ for(let i=0;i<nodes.length;i++){ for(let j=i+1;j<nodes.length;j++){ const a=nodes[i], b=nodes[j]; let dx=b.freeX-a.freeX, dy=b.freeY-a.freeY; let d2=dx*dx+dy*dy+1e-3; let dist=Math.sqrt(d2); const nx=dx/dist, ny=dy/dist; const F=WEB_REPULSE/d2; fx[i]-=F*nx; fy[i]-=F*ny; fx[j]+=F*nx; fy[j]+=F*ny; } } }
 
     if(dragging && orbitMix<=0.5 && dragIndex>=0){ const n=nodes[dragIndex]; n.freeX=pointerWX; n.freeY=pointerWY; n.vx=0; n.vy=0; }
 
@@ -251,31 +268,53 @@
       }
     }
 
-    // hover focus easing
-    for(let i=0;i<nodes.length;i++){
-      const n=nodes[i]; let scaleTarget=1, tintTarget=0; if(mouseIn){ const p=worldToScreen(n.x,n.y); const dx=mouseSX-p.x, dy=mouseSY-p.y; const d=Math.hypot(dx,dy); if(d<FOCUS_NEAR_PX){ scaleTarget = 1 + (1 - d/FOCUS_NEAR_PX)*0.25; } if(i===hoverIndex){ tintTarget = 1; } } const k=Math.min(1,HOVER_SPEED*dt); n.uiScale += (scaleTarget-n.uiScale)*k; n.uiTint  += (tintTarget-n.uiTint)*k; }
+    // collision solver (web only)
+    if(orbitMix<0.5){
+      for(let it=0; it<COLLISION_ITER; it++){
+        for(let i=0;i<nodes.length;i++){
+          for(let j=i+1;j<nodes.length;j++){
+            const a=nodes[i], b=nodes[j];
+            let dx=b.freeX-a.freeX, dy=b.freeY-a.freeY; let dist=Math.hypot(dx,dy);
+            if(dist===0){ dx=(Math.random()-0.5)*1e-3; dy=(Math.random()-0.5)*1e-3; dist=Math.hypot(dx,dy);} 
+            const minD=Math.max(WEB_MIN_DIST, a.size+b.size+8);
+            if(dist<minD){ const overlap=(minD-dist)/2; const nx=dx/dist, ny=dy/dist; const moveA=!(dragging && nodes[dragIndex]===a)&&!a.pinned&&a.animMode!=='exit'; const moveB=!(dragging && nodes[dragIndex]===b)&&!b.pinned&&b.animMode!=='exit'; if(moveA){ a.freeX-=nx*overlap; a.freeY-=ny*overlap; } if(moveB){ b.freeX+=nx*overlap; b.freeY+=ny*overlap; } }
+          }
+        }
+      }
+    }
 
     // orbit advance & drag-offset decay
     for(const n of nodes){ if(orbitActive && !(dragging && orbitMix>0.5 && nodes[dragIndex]===n)) n.angle+=n.omega*dt; }
     if(orbitMix>0.5){ for(const n of nodes){ if(!(dragging && nodes[dragIndex]===n)) { n.offX*=ORBIT_DRAG_DECAY; n.offY*=ORBIT_DRAG_DECAY; } } } else { for(const n of nodes){ n.offX=0; n.offY=0; } }
 
-    // blended output
-    for(const n of nodes){ const ox=Math.cos(n.angle)*n.radius, oy=Math.sin(n.angle)*n.radius; const orbitX=ox+n.offX, orbitY=oy+n.offY; const webX=n.freeX, webY=n.freeY; const rx = webX*(1-orbitMix)+orbitX*orbitMix; const ry = webY*(1-orbitMix)+orbitY*orbitMix; if(!n.animMode){ n.x = rx; n.y = ry; } }
+    // blended output + keep animating nodes' x/y
+    for(const n of nodes){
+      const ox=Math.cos(n.angle)*n.radius, oy=Math.sin(n.angle)*n.radius;
+      const orbitX=ox+n.offX, orbitY=oy+n.offY;
+      const webX=n.freeX, webY=n.freeY;
+      const rx = webX*(1-orbitMix)+orbitX*orbitMix;
+      const ry = webY*(1-orbitMix)+orbitY*orbitMix;
+      if(!n.animMode){ n.x = rx; n.y = ry; }
+    }
   }
 
   // ===== Draw =====
   function draw(){ const W=canvas.width/DPR, H=canvas.height/DPR; ctx.clearRect(0,0,W,H); const {cx,cy}=viewCenter(); ctx.save(); ctx.translate(cx,cy); ctx.scale(camScale,camScale); ctx.translate(-camX,-camY); ctx.translate(wobbleX, wobbleY);
     // orbit rings — 부드러운 등장/사라짐
     const baseAlpha = 0.18*orbitMix;
-    if(ringTransition){ const s=easeInOut(ringTransition.t); ctx.lineWidth=1/camScale; for(const r of ringTransition.prev){ const rad=R_BASE+(r-1)*R_STEP; ctx.strokeStyle=`rgba(124,192,255,${(baseAlpha*(1-s)).toFixed(3)})`; ctx.beginPath(); ctx.arc(0,0,rad,0,Math.PI*2); ctx.stroke(); } for(const r of ringTransition.next){ const rad=R_BASE+(r-1)*R_STEP; ctx.strokeStyle=`rgba(124,192,255,${(baseAlpha*s).toFixed(3)})`; ctx.beginPath(); ctx.arc(0,0,rad,0,Math.PI*2); ctx.stroke(); } } else if(orbitMix>0) { const used=new Set(nodes.filter(n=>n.ring>0).map(n=>n.ring)); ctx.lineWidth=1/camScale; ctx.strokeStyle=`rgba(124,192,255,${baseAlpha.toFixed(3)})`; for(const r of Array.from(used).sort((a,b)=>a-b)){ const rad=R_BASE+(r-1)*R_STEP; ctx.beginPath(); ctx.arc(0,0,rad,0,Math.PI*2); ctx.stroke(); } }
+    if(ringTransition){
+      const s=easeInOut(ringTransition.t);
+      ctx.lineWidth=1/camScale;
+      for(const r of ringTransition.prev){ const rad=R_BASE+(r-1)*R_STEP; ctx.strokeStyle=`rgba(124,192,255,${(baseAlpha*(1-s)).toFixed(3)})`; ctx.beginPath(); ctx.arc(0,0,rad,0,Math.PI*2); ctx.stroke(); }
+      for(const r of ringTransition.next){ const rad=R_BASE+(r-1)*R_STEP; ctx.strokeStyle=`rgba(124,192,255,${(baseAlpha*s).toFixed(3)})`; ctx.beginPath(); ctx.arc(0,0,rad,0,Math.PI*2); ctx.stroke(); }
+    } else if(orbitMix>0) {
+      const used=new Set(nodes.filter(n=>n.ring>0).map(n=>n.ring)); ctx.lineWidth=1/camScale; ctx.strokeStyle=`rgba(124,192,255,${baseAlpha.toFixed(3)})`; for(const r of Array.from(used).sort((a,b)=>a-b)){ const rad=R_BASE+(r-1)*R_STEP; ctx.beginPath(); ctx.arc(0,0,rad,0,Math.PI*2); ctx.stroke(); }
+    }
 
     // edges
     if(showEdges){ ctx.lineWidth=1.1/camScale; for(const e of edges){ const a=nodes[e.a], b=nodes[e.b]; const alpha=Math.min(a?.fade??1,b?.fade??1)*0.35; if(!a||!b||alpha<=0) continue; ctx.strokeStyle=`rgba(124,192,255,${alpha.toFixed(3)})`; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); } }
-
     // nodes
-    for(const n of nodes){ const alpha=n.fade; if(alpha<=0) continue; ctx.save(); ctx.translate(n.x,n.y); ctx.scale(n.scaleX, n.scaleY); const s=n.uiScale; const outer=(n.size+6)*s; const inner=n.size*s; // outer glow
-      ctx.beginPath(); ctx.fillStyle=`rgba(124,192,255,${(0.16*alpha).toFixed(3)})`; ctx.arc(0,0,outer,0,Math.PI*2); ctx.fill(); // inner fill with tint
-      const t = 0.7 * n.uiTint; const r = Math.round(207*(1-t) + 255*t); const g = Math.round(232*(1-t) + 235*t); const b = Math.round(255*(1-t) + 200*t); ctx.beginPath(); ctx.fillStyle=`rgba(${r},${g},${b},${alpha.toFixed(3)})`; ctx.arc(0,0,inner,0,Math.PI*2); ctx.fill(); ctx.restore(); }
+    for(const n of nodes){ const alpha=n.fade; if(alpha<=0) continue; ctx.save(); ctx.translate(n.x,n.y); ctx.scale(n.scaleX, n.scaleY); ctx.beginPath(); ctx.fillStyle=`rgba(124,192,255,${(0.16*alpha).toFixed(3)})`; ctx.arc(0,0,n.size+6,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.fillStyle=`rgba(207,232,255,${alpha.toFixed(3)})`; ctx.arc(0,0,n.size,0,Math.PI*2); ctx.fill(); ctx.restore(); }
     ctx.restore(); }
 
   // ===== Loop =====
@@ -310,7 +349,12 @@
     }
   }
 
-  function onContextMenu(e){ e.preventDefault(); if(showingConfirm) return; const sx=e.clientX, sy=e.clientY; const i=pickNode(sx,sy); if(i<0) return; pendingDeleteIndex=i; openConfirm(); }
+  function onContextMenu(e){
+    e.preventDefault();
+    if(showingConfirm) return; // already open
+    const sx=e.clientX, sy=e.clientY; const i=pickNode(sx,sy); if(i<0) return;
+    pendingDeleteIndex=i; openConfirm();
+  }
 
   // ===== Confirm Modal Logic =====
   let pendingDeleteIndex=-1, showingConfirm=false;
@@ -323,7 +367,14 @@
   backdrop.addEventListener('click', ()=>{ closeConfirm(); pendingDeleteIndex=-1; });
   btnCancel.addEventListener('click', ()=>{ closeConfirm(); pendingDeleteIndex=-1; });
   window.addEventListener('keydown', (ev)=>{ if(!showingConfirm) return; if(ev.key==='Escape'){ closeConfirm(); pendingDeleteIndex=-1; } });
-  btnDelete.addEventListener('click', ()=>{ if(pendingDeleteIndex<0){ closeConfirm(); return; } const n=nodes[pendingDeleteIndex]; if(!n){ closeConfirm(); pendingDeleteIndex=-1; return; } const sp = worldToScreen(n.x,n.y); const tgt = pickNearestEdgeScreen(sp.x, sp.y); const worldT = screenToWorld(tgt.tx, tgt.ty); n.animMode='exit'; n.animT=0; n.animDur=1.1; n.startX=n.x; n.startY=n.y; n.targetX=worldT.x; n.targetY=worldT.y; n.pinned=true; n.scaleX=1.15; n.scaleY=0.85; closeConfirm(); pendingDeleteIndex=-1; });
+  btnDelete.addEventListener('click', ()=>{
+    if(pendingDeleteIndex<0){ closeConfirm(); return; }
+    const n=nodes[pendingDeleteIndex];
+    if(!n){ closeConfirm(); pendingDeleteIndex=-1; return; }
+    const sp = worldToScreen(n.x,n.y); const tgt = pickNearestEdgeScreen(sp.x, sp.y); const worldT = screenToWorld(tgt.tx, tgt.ty);
+    n.animMode='exit'; n.animT=0; n.animDur=1.1; n.startX=n.x; n.startY=n.y; n.targetX=worldT.x; n.targetY=worldT.y; n.pinned=true; n.scaleX=1.15; n.scaleY=0.85;
+    closeConfirm(); pendingDeleteIndex=-1;
+  });
 
   // ===== UI =====
   const btnLayout=document.getElementById('toggleLayout');
@@ -336,7 +387,18 @@
   btnAdd.addEventListener('click',()=>{ addNodeAnimated(); });
 
   // ===== Dev Tests (runtime assertions) =====
-  function devTests(){ try{ console.groupCollapsed('%cDevTests','color:#9cf'); console.assert(typeof Node==='function' && typeof Edge==='function', 'Node/Edge class defined'); const c=worldToScreen(0,0); const w=screenToWorld(c.x,c.y); console.assert(Math.abs(w.x)<1e-6 && Math.abs(w.y)<1e-6, 'world<->screen roundtrip @origin'); const ringsNow = new Set(nodes.filter(n=>n.ring>0).map(n=>n.ring)); for(const r of ringsNow){ const rad=R_BASE+(r-1)*R_STEP; console.assert(rad>0,'ring radius positive'); } const n0=nodes.length, e0=edges.length; addNodeAnimated(); const n1=nodes.length, e1=edges.length; console.assert(n1===n0+1,'add node length'); console.assert(n0===0 || e1>=e0+2, 'add node adds edges when graph non-empty'); const last=nodes[nodes.length-1]; last.animMode='exit'; last.animT=0; last.animDur=0.2; last.startX=last.x; last.startY=last.y; const sc=worldToScreen(last.x,last.y); const edge=pickNearestEdgeScreen(sc.x,sc.y); const wt=screenToWorld(edge.tx,edge.ty); last.targetX=wt.x; last.targetY=wt.y; last.pinned=true; console.groupEnd(); }catch(err){ console.error('DevTests error', err); } }
+  function devTests(){
+    try{
+      console.groupCollapsed('%cDevTests','color:#9cf');
+      console.assert(typeof Node==='function' && typeof Edge==='function', 'Node/Edge class defined');
+      const c=worldToScreen(0,0); const w=screenToWorld(c.x,c.y); console.assert(Math.abs(w.x)<1e-6 && Math.abs(w.y)<1e-6, 'world<->screen roundtrip @origin');
+      const ringsNow = new Set(nodes.filter(n=>n.ring>0).map(n=>n.ring)); for(const r of ringsNow){ const rad=R_BASE+(r-1)*R_STEP; console.assert(rad>0,'ring radius positive'); }
+      const n0=nodes.length, e0=edges.length; addNodeAnimated(); const n1=nodes.length, e1=edges.length; console.assert(n1===n0+1,'add node length'); console.assert(n0===0 || e1>=e0+2, 'add node adds edges when graph non-empty');
+      // trigger removal test by deleting the last node via synthetic exit
+      const last=nodes[nodes.length-1]; last.animMode='exit'; last.animT=0; last.animDur=0.2; last.startX=last.x; last.startY=last.y; const sc=worldToScreen(last.x,last.y); const edge=pickNearestEdgeScreen(sc.x,sc.y); const wt=screenToWorld(edge.tx,edge.ty); last.targetX=wt.x; last.targetY=wt.y; last.pinned=true; // fast remove
+      console.groupEnd();
+    }catch(err){ console.error('DevTests error', err); }
+  }
 
   // ===== Start =====
   makeGraph(); devTests(); requestAnimationFrame(loop);
