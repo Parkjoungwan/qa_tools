@@ -69,7 +69,7 @@
 
   // Camera (world origin = orbit center)
   let camScale=1, camX=0, camY=0, camTX=0, camTY=0, camVX=0, camVY=0;
-  const MIN_SCALE=0.4, MAX_SCALE=4.0; const CAM_K=12.0, CAM_C=6.5;
+  let MIN_SCALE=0.4, MAX_SCALE=4.0; const BASE_MIN_SCALE=0.4; const CAM_K=12.0, CAM_C=6.5;
   // wobble of nodes when camera snaps
   let wobbleX=0, wobbleY=0, wobbleVX=0, wobbleVY=0; const WOB_K=22.0, WOB_C=7.5, WOB_GAIN=0.18;
 
@@ -88,7 +88,7 @@
   // hover state
   let hoverIndex=-1, mouseSX=0, mouseSY=0, mouseIn=false;
 
-  function resize(){canvas.width=innerWidth*DPR;canvas.height=innerHeight*DPR;ctx.setTransform(DPR,0,0,DPR,0,0);} resize(); window.addEventListener('resize',resize);
+  function resize(){canvas.width=innerWidth*DPR;canvas.height=innerHeight*DPR;ctx.setTransform(DPR,0,0,DPR,0,0); updateMinScale();} resize(); window.addEventListener('resize',resize);
 
   // ===== Graph Types =====
   class Node{
@@ -146,6 +146,7 @@
   function startOrbitRelayout(){
     computeOrbitTargets();
     for(const n of nodes){ const t=n.orbitTarget; if(!t) continue; n.orbitMorph={t:0, dur:ORBIT_RELAYOUT_DUR, fromR:n.radius, toR:t.radius, fromOm:n.omega, toOm:t.omega, fromRing:n.ring, toRing:t.ring}; }
+    updateMinScale();
   }
 
   // ===== Build Graph =====
@@ -166,14 +167,45 @@
     computeOrbitTargets();
     applyOrbitTargetsInstant();
     for(const n of nodes){ const ox=Math.cos(n.angle)*n.radius, oy=Math.sin(n.angle)*n.radius; n.x=ox; n.y=oy; n.freeX=ox; n.freeY=oy; n.vx=0; n.vy=0; n.offX=0; n.offY=0; n.pinned=false; n.animMode=null; n.fade=1; n.scaleX=1; n.scaleY=1; }
-    nextId = nodes.length;
+    nextId = nodes.length; updateMinScale();
   }
 
   // ===== Camera helpers =====
   function viewCenter(){ return {cx:canvas.width/DPR/2, cy:canvas.height/DPR/2}; }
   function worldToScreen(wx,wy){ const {cx,cy}=viewCenter(); return {x:cx+(wx-camX)*camScale, y:cy+(wy-camY)*camScale}; }
   function screenToWorld(sx,sy){ const {cx,cy}=viewCenter(); return {x:camX+(sx-cx)/camScale, y:camY+(sy-cy)/camScale}; }
-  function setScaleAroundPoint(newScale, anchorSX, anchorSY){ const before=screenToWorld(anchorSX,anchorSY); camScale=Math.max(MIN_SCALE, Math.min(MAX_SCALE, newScale)); const after=screenToWorld(anchorSX,anchorSY); camX+=before.x-after.x; camY+=before.y-after.y; }
+  function setScaleAroundPoint(newScale, anchorSX, anchorSY){
+    const before=screenToWorld(anchorSX,anchorSY);
+    camScale=Math.max(MIN_SCALE, Math.min(MAX_SCALE, newScale));
+    const after=screenToWorld(anchorSX,anchorSY);
+    camX+=before.x-after.x; camY+=before.y-after.y;
+  }
+
+  // Dynamically adjust minimum zoom-out so full scene fits
+  function computeContentRadius(){
+    // consider orbit radii (current/target) and web extents
+    let rOrbit=0;
+    for(const n of nodes){
+      const ro = Math.max(n.radius||0, (n.orbitTarget?.radius)||0);
+      if(ro>rOrbit) rOrbit=ro;
+    }
+    // include halo/padding
+    rOrbit += 24;
+    let rWeb=0;
+    for(const n of nodes){
+      const rw = Math.hypot(n.freeX, n.freeY) + (n.size+8);
+      if(rw>rWeb) rWeb=rw;
+    }
+    return Math.max(rOrbit, rWeb, 120);
+  }
+  function updateMinScale(){
+    const W=canvas.width/DPR, H=canvas.height/DPR; const R=computeContentRadius();
+    const pad=40; const fitX=(W-pad)/(2*R); const fitY=(H-pad)/(2*R);
+    const fitScale=Math.max(0.02, Math.min(fitX, fitY));
+    // allow further zoom-out if needed, never more restrictive than BASE_MIN_SCALE
+    MIN_SCALE = Math.min(BASE_MIN_SCALE, fitScale);
+    if(camScale < MIN_SCALE) camScale = MIN_SCALE;
+  }
 
   // wheel zoom ALWAYS around center node (world 0,0)
   canvas.addEventListener('wheel', (e)=>{ e.preventDefault(); const ctr=worldToScreen(0,0); const factor=Math.exp(-e.deltaY*0.0015); setScaleAroundPoint(camScale*factor, ctr.x, ctr.y); }, {passive:false});
@@ -336,7 +368,30 @@
   btnAdd.addEventListener('click',()=>{ addNodeAnimated(); });
 
   // ===== Dev Tests (runtime assertions) =====
-  function devTests(){ try{ console.groupCollapsed('%cDevTests','color:#9cf'); console.assert(typeof Node==='function' && typeof Edge==='function', 'Node/Edge class defined'); const c=worldToScreen(0,0); const w=screenToWorld(c.x,c.y); console.assert(Math.abs(w.x)<1e-6 && Math.abs(w.y)<1e-6, 'world<->screen roundtrip @origin'); const ringsNow = new Set(nodes.filter(n=>n.ring>0).map(n=>n.ring)); for(const r of ringsNow){ const rad=R_BASE+(r-1)*R_STEP; console.assert(rad>0,'ring radius positive'); } const n0=nodes.length, e0=edges.length; addNodeAnimated(); const n1=nodes.length, e1=edges.length; console.assert(n1===n0+1,'add node length'); console.assert(n0===0 || e1>=e0+2, 'add node adds edges when graph non-empty'); const last=nodes[nodes.length-1]; last.animMode='exit'; last.animT=0; last.animDur=0.2; last.startX=last.x; last.startY=last.y; const sc=worldToScreen(last.x,last.y); const edge=pickNearestEdgeScreen(sc.x,sc.y); const wt=screenToWorld(edge.tx,edge.ty); last.targetX=wt.x; last.targetY=wt.y; last.pinned=true; console.groupEnd(); }catch(err){ console.error('DevTests error', err); } }
+  function devTests(){
+    try{
+      console.groupCollapsed('%cDevTests','color:#9cf');
+      console.assert(typeof Node==='function' && typeof Edge==='function', 'Node/Edge class defined');
+      const c=worldToScreen(0,0); const w=screenToWorld(c.x,c.y);
+      console.assert(Math.abs(w.x)<1e-6 && Math.abs(w.y)<1e-6, 'world<->screen roundtrip @origin');
+      const ringsNow = new Set(nodes.filter(n=>n.ring>0).map(n=>n.ring));
+      for(const r of ringsNow){ const rad=R_BASE+(r-1)*R_STEP; console.assert(rad>0,'ring radius positive'); }
+
+      // New: startOrbitRelayout sanity (should populate orbitMorph and ringTransition)
+      const beforeMorph = nodes.reduce((s,n)=>s+(n.orbitMorph?1:0),0);
+      startOrbitRelayout();
+      const afterMorph = nodes.reduce((s,n)=>s+(n.orbitMorph?1:0),0);
+      console.assert(afterMorph>=beforeMorph, 'startOrbitRelayout assigns orbitMorph');
+      console.assert(ringTransition && ringTransition.dur>0, 'ringTransition created');
+
+      const n0=nodes.length, e0=edges.length; addNodeAnimated(); const n1=nodes.length, e1=edges.length;
+      console.assert(n1===n0+1,'add node length');
+      console.assert(n0===0 || e1>=e0+2, 'add node adds edges when graph non-empty');
+      // trigger removal test by deleting the last node via synthetic exit
+      const last=nodes[nodes.length-1]; last.animMode='exit'; last.animT=0; last.animDur=0.2; last.startX=last.x; last.startY=last.y; const sc=worldToScreen(last.x,last.y); const edge=pickNearestEdgeScreen(sc.x,sc.y); const wt=screenToWorld(edge.tx,edge.ty); last.targetX=wt.x; last.targetY=wt.y; last.pinned=true;
+      console.groupEnd();
+    }catch(err){ console.error('DevTests error', err); }
+  }
 
   // ===== Start =====
   makeGraph(); devTests(); requestAnimationFrame(loop);
