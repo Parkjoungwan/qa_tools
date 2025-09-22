@@ -82,6 +82,7 @@
   let orbitMix=1, orbitTarget=1, orbitActive=true; // 0=Web, 1=Orbit
 
   let dragging=false, dragIndex=-1; // node-drag state
+  let dragAdj = null; // neighbors of dragged node for focus/dim
   let pointerWX=0, pointerWY=0, dragOffX=0, dragOffY=0;
   // panning state
   let isPanning=false, panStartSX=0, panStartSY=0, panCamX0=0, panCamY0=0, panLastSX=0, panLastSY=0, panLastT=0, panVelX=0, panVelY=0;
@@ -123,6 +124,16 @@
   }
 
   class Edge{ constructor(a,b){ this.a=a; this.b=b; } }
+
+  // quick adjacency helper for focus/dim
+  function neighborsOf(idx){
+    const s = new Set();
+    for (const e of edges) {
+      if (e.a === idx) s.add(e.b);
+      else if (e.b === idx) s.add(e.a);
+    }
+    return s;
+  }
 
   // ===== Orbit target 계산 & 적용 =====
   function computeOrbitTargets(){
@@ -310,7 +321,10 @@ async function importJSONFile(file){
     if(i<0){ // start panning background
       isPanning=true; dragging=false; dragIndex=-1; canvas.classList.add('drag');
       panStartSX=sx; panStartSY=sy; panCamX0=camX; panCamY0=camY; panLastSX=sx; panLastSY=sy; panLastT=performance.now(); panVelX=0; panVelY=0; return; }
-    dragging=true; dragIndex=i; canvas.classList.add('drag');
+    dragging = true;
+    dragIndex = i;
+    dragAdj = neighborsOf(i); // <-- add
+    canvas.classList.add('drag');
     const n=nodes[i]; const w=screenToWorld(sx,sy); pointerWX=w.x; pointerWY=w.y; dragOffX=w.x-n.x; dragOffY=w.y-n.y; }
 
   function onMove(e){ const sx=e.clientX, sy=e.clientY; mouseSX=sx; mouseSY=sy; mouseIn=true; hoverIndex=pickNode(sx,sy);
@@ -321,7 +335,11 @@ async function importJSONFile(file){
 
   function onUp(){
     if(isPanning){ camTX=0; camTY=0; camVX=panVelX; camVY=panVelY; wobbleVX+=panVelX*WOB_GAIN; wobbleVY+=panVelY*WOB_GAIN; }
-    isPanning=false; dragging=false; dragIndex=-1; canvas.classList.remove('drag'); }
+    isPanning = false;
+    dragging = false;
+    dragIndex = -1;
+    dragAdj = null; // <-- add
+    canvas.classList.remove('drag'); }
 
   canvas.addEventListener('mousedown',onDown); window.addEventListener('mousemove',onMove); window.addEventListener('mouseup',onUp); canvas.addEventListener('contextmenu',onContextMenu); canvas.addEventListener('mouseleave',()=>{ mouseIn=false; hoverIndex=-1; });
 
@@ -406,9 +424,31 @@ async function importJSONFile(file){
       if (n.shuffle.t >= 1) n.shuffle = null;
     }
 
-    // hover focus easing
-    for(let i=0;i<nodes.length;i++){
-      const n=nodes[i]; let scaleTarget=1, tintTarget=0; if(mouseIn){ const p=worldToScreen(n.x,n.y); const dx=mouseSX-p.x, dy=mouseSY-p.y; const d=Math.hypot(dx,dy); if(d<FOCUS_NEAR_PX){ scaleTarget = 1 + (1 - d/FOCUS_NEAR_PX)*0.25; } if(i===hoverIndex){ tintTarget = 1; } } const k=Math.min(1,HOVER_SPEED*dt); n.uiScale += (scaleTarget-n.uiScale)*k; n.uiTint  += (tintTarget-n.uiTint)*k; }
+    // hover/drag focus easing
+    for (let i = 0; i < nodes.length; i++) {
+      const n = nodes[i];
+      let scaleTarget = 1, tintTarget = 0;
+
+      if (dragging && dragIndex >= 0) {
+        if (i === dragIndex) {
+          // 드래그 중인 노드: 가장 강조
+          scaleTarget = 1.35; tintTarget = 1.0;
+        } else if (dragAdj && dragAdj.has(i)) {
+          // 이웃 노드: 약하게 강조
+          scaleTarget = 1.15; tintTarget = 0.6;
+        } else {
+          // 그 외: 살짝 디밍
+          scaleTarget = 0.94; tintTarget = 0.0;
+        }
+      } else {
+        // 드래그 안 할 땐 중립 (hover 기반 확대/틴트는 더 이상 사용하지 않음)
+        scaleTarget = 1.0; tintTarget = 0.0;
+      }
+
+      const k = Math.min(1, HOVER_SPEED * dt);
+      n.uiScale += (scaleTarget - n.uiScale) * k;
+      n.uiTint  += (tintTarget - n.uiTint) * k;
+    }
 
     // orbit advance & drag-offset decay
     for(const n of nodes){ if(orbitActive && !(dragging && orbitMix>0.5 && nodes[dragIndex]===n)) n.angle+=n.omega*dt; }
@@ -433,7 +473,7 @@ async function importJSONFile(file){
     if(ringTransition){ const s=easeInOut(ringTransition.t); ctx.lineWidth=1/camScale; for(const r of ringTransition.prev){ const rad=R_BASE+(r-1)*R_STEP; ctx.strokeStyle=`rgba(124,192,255,${(baseAlpha*(1-s)).toFixed(3)})`; ctx.beginPath(); ctx.arc(0,0,rad,0,Math.PI*2); ctx.stroke(); } for(const r of ringTransition.next){ const rad=R_BASE+(r-1)*R_STEP; ctx.strokeStyle=`rgba(124,192,255,${(baseAlpha*s).toFixed(3)})`; ctx.beginPath(); ctx.arc(0,0,rad,0,Math.PI*2); ctx.stroke(); } } else if(orbitMix>0) { const used=new Set(nodes.filter(n=>n.ring>0).map(n=>n.ring)); ctx.lineWidth=1/camScale; ctx.strokeStyle=`rgba(124,192,255,${baseAlpha.toFixed(3)})`; for(const r of Array.from(used).sort((a,b)=>a-b)){ const rad=R_BASE+(r-1)*R_STEP; ctx.beginPath(); ctx.arc(0,0,rad,0,Math.PI*2); ctx.stroke(); } }
 
     // edges
-    if(showEdges){ ctx.lineWidth=1.1/camScale; for(const e of edges){ const a=nodes[e.a], b=nodes[e.b]; const alpha=Math.min(a?.fade??1,b?.fade??1)*0.35; if(!a||!b||alpha<=0) continue; ctx.strokeStyle=`rgba(124,192,255,${alpha.toFixed(3)})`; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); } }
+    if(showEdges){ ctx.lineWidth=1.1/camScale; for(const e of edges){ const a=nodes[e.a], b=nodes[e.b]; let alpha=Math.min(a?.fade??1,b?.fade??1)*0.35; if (dragging && dragIndex >= 0) { const hit = (e.a === dragIndex || e.b === dragIndex); alpha = hit ? 0.70 : 0.10; } if(!a||!b||alpha<=0) continue; ctx.strokeStyle=`rgba(124,192,255,${alpha.toFixed(3)})`; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); } }
 
     // nodes
     for(const n of nodes){ const alpha=n.fade; if(alpha<=0) continue; ctx.save(); ctx.translate(n.x,n.y); ctx.scale(n.scaleX, n.scaleY); const s=n.uiScale; const outer=(n.size+6)*s; const inner=n.size*s; // outer glow

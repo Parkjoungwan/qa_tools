@@ -25,6 +25,26 @@
     #confirmModal .modal-btn:hover{background:rgba(124,192,255,.22)}
     #confirmModal .modal-btn.danger{border-color:rgba(255,110,110,.4); background:rgba(255,110,110,.1)}
     #confirmModal .modal-btn.danger:hover{background:rgba(255,110,110,.2)}
+    #addNodeModal .modal-body { margin-bottom: 16px; }
+    #addNodeModal textarea {
+      width: 100%;
+      height: 80px;
+      background: rgba(0,0,0,0.2);
+      border: 1px solid rgba(124,192,255,0.25);
+      border-radius: 8px;
+      padding: 8px;
+      color: var(--fg);
+      font-family: inherit;
+      font-size: 13px;
+      resize: vertical;
+      box-sizing: border-box;
+    }
+    #addNodeModal .char-counter {
+      text-align: right;
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
   </style>
 </head>
 <body>
@@ -36,6 +56,10 @@
     <button id="saveJSON">Save JSON</button>
     <button id="loadJSON">Load JSON</button>
     <input type="file" id="fileInput" style="display:none" accept="application/json" />
+    <span class="sep"></span>
+    <label for="motion" style="font-size:12px;opacity:.85">Motion</label>
+    <input id="motion" type="range" min="0.5" max="1.5" step="0.1" value="1.0" />
+    <span id="motionVal" style="font-size:12px;opacity:.85">×1.0</span>
   </div>
   <canvas id="stage"></canvas>
   <!-- Confirm Delete Modal -->
@@ -46,6 +70,21 @@
       <div class="modal-actions">
         <button id="btnCancel" class="modal-btn">취소</button>
         <button id="btnDelete" class="modal-btn danger">삭제</button>
+      </div>
+    </div>
+  </div>
+  <!-- Add Node Modal -->
+  <div id="addNodeBackdrop" style="display:none"></div>
+  <div id="addNodeModal" role="dialog" aria-modal="true" aria-labelledby="addNodeTitle" style="display:none">
+    <div class="modal-card">
+      <div id="addNodeTitle" class="modal-title">새 노드 추가</div>
+      <div class="modal-body">
+        <textarea id="nodeMemoInput" placeholder="메모 입력..." maxlength="100"></textarea>
+        <div id="charCounter" class="char-counter">0/100</div>
+      </div>
+      <div class="modal-actions">
+        <button id="btnAddCancel" class="modal-btn">취소</button>
+        <button id="btnAddConfirm" class="modal-btn">추가</button>
       </div>
     </div>
   </div>
@@ -84,6 +123,7 @@
   let dragging=false, dragIndex=-1; // node-drag state
   let dragAdj = null; // neighbors of dragged node for focus/dim
   let pointerWX=0, pointerWY=0, dragOffX=0, dragOffY=0;
+  let dragLastWX=0, dragLastWY=0, dragLastT=0;
   // panning state
   let isPanning=false, panStartSX=0, panStartSY=0, panCamX0=0, panCamY0=0, panLastSX=0, panLastSY=0, panLastT=0, panVelX=0, panVelY=0;
 
@@ -329,11 +369,27 @@ async function importJSONFile(file){
 
   function onMove(e){ const sx=e.clientX, sy=e.clientY; mouseSX=sx; mouseSY=sy; mouseIn=true; hoverIndex=pickNode(sx,sy);
     if(isPanning){ const now=performance.now(); camX=panCamX0-(sx-panStartSX)/camScale; camY=panCamY0-(sy-panStartSY)/camScale; const dt=Math.max(1e-3,(now-panLastT)/1000); panVelX=-((sx-panLastSX)/camScale)/dt; panVelY=-((sy-panLastSY)/camScale)/dt; panLastSX=sx; panLastSY=sy; panLastT=now; camTX=camX; camTY=camY; camVX=0; camVY=0; return; }
-    if(!dragging) return; const w=screenToWorld(sx,sy); pointerWX=w.x; pointerWY=w.y; const n=nodes[dragIndex];
+    if(!dragging) return;
+    // 저장: 이전 샘플
+    dragLastWX = pointerWX;
+    dragLastWY = pointerWY;
+    dragLastT  = performance.now();
+
+    const w=screenToWorld(sx,sy); pointerWX=w.x; pointerWY=w.y; const n=nodes[dragIndex];
     if(orbitMix>0.5){ const ox=Math.cos(n.angle)*n.radius, oy=Math.sin(n.angle)*n.radius; n.offX=w.x-ox; n.offY=w.y-oy; }
     else { n.freeX=w.x-dragOffX; n.freeY=w.y-dragOffY; n.pinned=true; } }
 
   function onUp(){
+    if (dragging && dragIndex >= 0 && orbitMix <= 0.5) {
+      const n = nodes[dragIndex];
+      const now = performance.now();
+      const dt  = Math.max(1e-3, (now - (dragLastT || now)) / 1000);
+      const vx  = (pointerWX - dragLastWX) / dt;
+      const vy  = (pointerWY - dragLastWY) / dt;
+      // 감쇠를 고려해 너무 과하지 않게 스케일
+      n.vx += vx * 0.65;
+      n.vy += vy * 0.65;
+    }
     if(isPanning){ camTX=0; camTY=0; camVX=panVelX; camVY=panVelY; wobbleVX+=panVelX*WOB_GAIN; wobbleVY+=panVelY*WOB_GAIN; }
     isPanning = false;
     dragging = false;
@@ -500,7 +556,7 @@ function drawSpeechBubbleHUD(sx, sy, node){
 
   const widths   = lines.map(t => ctx.measureText(t).width);
   const maxWidth = widths.length ? Math.max.apply(null, widths) : 0;
-  const boxW     = Math.min(maxW, maxWidth + padX*2);
+  const boxW     = maxWidth + padX*2;
   const boxH     = lineH*lines.length + padY*2;
 
   const offsetX = 16, offsetY = -24; // node 오른쪽 위로 배치
@@ -510,14 +566,6 @@ function drawSpeechBubbleHUD(sx, sy, node){
   ctx.fillStyle   = 'rgba(20,28,36,0.96)';
   ctx.strokeStyle = 'rgba(124,192,255,0.4)';
   roundRect(ctx, x, y, boxW, boxH, 10);
-  ctx.fill(); ctx.stroke();
-
-  // tail(꼬리)
-  ctx.beginPath();
-  ctx.moveTo(sx+6, sy-4);
-  ctx.lineTo(x+12, y+boxH-2);
-  ctx.lineTo(x+24, y+boxH-2);
-  ctx.closePath();
   ctx.fill(); ctx.stroke();
 
   // text
@@ -562,18 +610,13 @@ function roundRect(c, x, y, w, h, r){
 }
 
   // ===== Loop =====
-  let last=performance.now(); function loop(now){ const dt=Math.min(0.05,(now-last)/1000); last=now; step(dt); draw(); requestAnimationFrame(loop); }
+  let last=performance.now(); function loop(now){ const dt=Math.min(0.05,(now-last)/1000); last=now; step(dt * (window.MOTION || MOTION || 1.0)); draw(); requestAnimationFrame(loop); }
 
   // ===== Add/Delete (animated) =====
   function screenSize(){ return {W: canvas.width/DPR, H: canvas.height/DPR}; }
   function pickNearestEdgeScreen(x,y){ const {W,H}=screenSize(); const dLeft=x, dRight=W-x, dTop=y, dBottom=H-y; const min=Math.min(dLeft,dRight,dTop,dBottom); if(min===dLeft) return {side:'left', tx:-40, ty:y}; if(min===dRight) return {side:'right', tx:W+40, ty:y}; if(min===dTop) return {side:'top', tx:x, ty:-40}; return {side:'bottom', tx:x, ty:H+40}; }
 
-  function addNodeAnimated(showPrompt = false){
-    let memo = "";
-    if (showPrompt) {
-      const userInput = prompt("새 노드에 대한 메모를 입력하세요:", "");
-      memo = (userInput === null) ? "" : userInput;
-    }
+  function addNodeAnimated(memo = ""){
 
     const newIndex = nodes.length; // will become index after push
     const n = new Node(nextId++);
@@ -618,6 +661,50 @@ function roundRect(c, x, y, w, h, r){
   window.addEventListener('keydown', (ev)=>{ if(!showingConfirm) return; if(ev.key==='Escape'){ closeConfirm(); pendingDeleteIndex=-1; } });
   btnDelete.addEventListener('click', ()=>{ if(pendingDeleteIndex<0){ closeConfirm(); return; } const n=nodes[pendingDeleteIndex]; if(!n){ closeConfirm(); pendingDeleteIndex=-1; return; } const sp = worldToScreen(n.x,n.y); const tgt = pickNearestEdgeScreen(sp.x, sp.y); const worldT = screenToWorld(tgt.tx, tgt.ty); n.animMode='exit'; n.animT=0; n.animDur=1.1; n.startX=n.x; n.startY=n.y; n.targetX=worldT.x; n.targetY=worldT.y; n.pinned=true; n.scaleX=1.15; n.scaleY=0.85; closeConfirm(); pendingDeleteIndex=-1; });
 
+  // ===== Add Node Modal Logic =====
+  let showingAddNode = false;
+  const addNodeBackdrop = document.getElementById('addNodeBackdrop');
+  const addNodeModal = document.getElementById('addNodeModal');
+  const btnAddCancel = document.getElementById('btnAddCancel');
+  const btnAddConfirm = document.getElementById('btnAddConfirm');
+  const nodeMemoInput = document.getElementById('nodeMemoInput');
+  const charCounter = document.getElementById('charCounter');
+
+  function openAddNodeModal() {
+    showingAddNode = true;
+    nodeMemoInput.value = '';
+    charCounter.textContent = '0/100';
+    addNodeBackdrop.style.display = 'block';
+    addNodeModal.style.display = 'flex';
+    nodeMemoInput.focus();
+  }
+
+  function closeAddNodeModal() {
+    showingAddNode = false;
+    addNodeBackdrop.style.display = 'none';
+    addNodeModal.style.display = 'none';
+  }
+
+  nodeMemoInput.addEventListener('input', () => {
+    const len = nodeMemoInput.value.length;
+    charCounter.textContent = `${len}/100`;
+  });
+
+  addNodeBackdrop.addEventListener('click', closeAddNodeModal);
+  btnAddCancel.addEventListener('click', closeAddNodeModal);
+  window.addEventListener('keydown', (ev) => {
+    if (!showingAddNode) return;
+    if (ev.key === 'Escape') {
+      closeAddNodeModal();
+    }
+  });
+
+  btnAddConfirm.addEventListener('click', () => {
+    const memo = nodeMemoInput.value;
+    closeAddNodeModal();
+    addNodeAnimated(memo);
+  });
+
   function shufflePositions(){
     const R = computeContentRadius();
     const D = 0.9; // duration seconds
@@ -660,10 +747,19 @@ function roundRect(c, x, y, w, h, r){
   btnLayout.addEventListener('click',()=>{ if(orbitTarget===1){ for(const n of nodes){ n.freeX=n.x; n.freeY=n.y; } orbitTarget=0; orbitActive=false; btnLayout.textContent='Layout: Web'; btnLayout.setAttribute('aria-pressed','false'); } else { for(const n of nodes){ n.pinned=false; } orbitTarget=1; orbitActive=true; btnLayout.textContent='Layout: Orbit'; btnLayout.setAttribute('aria-pressed','true'); } });
   btnEdges.addEventListener('click',()=>{ showEdges=!showEdges; btnEdges.textContent=showEdges?'Edges: On':'Edges: Off'; btnEdges.setAttribute('aria-pressed', showEdges?'true':'false'); });
   btnShuffle.addEventListener('click', shufflePositions);
-  btnAdd.addEventListener('click',()=>{ addNodeAnimated(true); });
+  btnAdd.addEventListener('click', openAddNodeModal);
   btnSave.addEventListener('click', exportJSON);
   btnLoad.addEventListener('click', ()=> fileInput.click());
   fileInput.addEventListener('change', (e)=> importJSONFile(e.target.files[0]));
+
+  // Motion slider (global speed)
+  let MOTION = 1.0;
+  const motionEl  = document.getElementById('motion');
+  const motionVal = document.getElementById('motionVal');
+  motionEl?.addEventListener('input', () => {
+    MOTION = parseFloat(motionEl.value) || 1.0;
+    if (motionVal) motionVal.textContent = `×${MOTION.toFixed(1)}`;
+  });
 
   // ===== Dev Tests (runtime assertions) =====
   function devTests(){
