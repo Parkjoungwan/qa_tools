@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Orbit/Web Graph — smooth relayout + zoom/pan + edges + neighbor follow + add/remove + focus UX</title>
+  <title>Orbit/Web Graph — smooth relayout + zoom/pan + edges + neighbor follow + add/remove + focus UX + save/load</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet">
@@ -33,6 +33,9 @@
     <button id="toggleEdges" aria-pressed="true">Edges: On</button>
     <button id="shuffle">Shuffle</button>
     <button id="addNode">Add Node</button>
+    <button id="saveJSON">Save JSON</button>
+    <button id="loadJSON">Load JSON</button>
+    <input type="file" id="fileInput" style="display:none" accept="application/json" />
   </div>
   <canvas id="stage"></canvas>
   <!-- Confirm Delete Modal -->
@@ -54,7 +57,7 @@
   const DPR=window.devicePixelRatio||1;
 
   // ===== Params =====
-  const N0=30; // initial nodes
+  const N0=0; // initial nodes (start empty)
   const R_BASE=110, R_STEP=70, R_JITTER=8;
   const SPEED_BASE=0.8, SPEED_FALLOFF=0.55;
   // Web physics
@@ -74,6 +77,7 @@
   let wobbleX=0, wobbleY=0, wobbleVX=0, wobbleVY=0; const WOB_K=22.0, WOB_C=7.5, WOB_GAIN=0.18;
 
   // ===== State =====
+  const SESSION_KEY = 'graphState.v1';
   let nodes=[], edges=[]; let showEdges=true; let nextId=0;
   let orbitMix=1, orbitTarget=1, orbitActive=true; // 0=Web, 1=Orbit
 
@@ -108,6 +112,9 @@
       this.fade=1;                  // edge/node alpha during anim
       // UI focus state
       this.uiScale=1; this.uiTint=0;
+      // metadata
+      this.createdAt=null;
+      this.memo="";
       // orbit relayout target & tween
       this.jitter=(Math.random()*2-1)*R_JITTER; // 개인차
       this.orbitTarget={ring:1, radius:0, omega:0};
@@ -145,7 +152,8 @@
 
   function startOrbitRelayout(){
     computeOrbitTargets();
-    for(const n of nodes){ const t=n.orbitTarget; if(!t) continue; n.orbitMorph={t:0, dur:ORBIT_RELAYOUT_DUR, fromR:n.radius, toR:t.radius, fromOm:n.omega, toOm:t.omega, fromRing:n.ring, toRing:t.ring}; }
+    for(const n of nodes){ const t=n.orbitTarget; if(!t) continue; n.orbitMorph={t:0, dur:ORBIT_RELAYOUT_DUR, fromR:n.radius, toR:t.radius, fromOm:n.omega, toOm:t.omega, fromRing:n.ring, toRing:t.ring};
+    }
     updateMinScale();
   }
 
@@ -169,6 +177,91 @@
     for(const n of nodes){ const ox=Math.cos(n.angle)*n.radius, oy=Math.sin(n.angle)*n.radius; n.x=ox; n.y=oy; n.freeX=ox; n.freeY=oy; n.vx=0; n.vy=0; n.offX=0; n.offY=0; n.pinned=false; n.animMode=null; n.fade=1; n.scaleX=1; n.scaleY=1; }
     nextId = nodes.length; updateMinScale();
   }
+
+// ===== Persistence (sessionStorage + import/export) =====
+function serializeGraph(){
+  return {
+    version: 1,
+    nodes: nodes.map(n=>({
+      id:n.id, size:n.size, label:n.label,
+      ring:n.ring, radius:n.radius, angle:n.angle, omega:n.omega,
+      x:n.x, y:n.y, freeX:n.freeX, freeY:n.freeY,
+      pinned:n.pinned, memo:n.memo, createdAt:n.createdAt ? new Date(n.createdAt).toISOString() : null,
+    })),
+    edges: edges.map(e=>({a:e.a, b:e.b})),
+    nextId: nextId,
+    camera: { camScale, camX, camY }
+  };
+}
+function saveToSession(){
+  try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(serializeGraph())); }
+  catch(err){ console.warn('session save failed', err); }
+}
+function restoreGraph(data){
+  try{
+    if(!data || typeof data !== 'object') return false;
+    if (data.version !== 1) {
+      alert('지원하지 않는 JSON 버전입니다.');
+      return false;
+    }
+    const ns = Array.isArray(data.nodes) ? data.nodes : [];
+    const es = Array.isArray(data.edges) ? data.edges : [];
+    nodes = ns.map(raw=>{
+      const n = new Node(raw.id);
+      n.size=raw.size||n.size; n.label=String(raw.label??raw.id);
+      n.ring=raw.ring??n.ring; n.radius=raw.radius??n.radius;
+      n.angle=raw.angle??n.angle; n.omega=raw.omega??n.omega;
+      n.x=raw.x??0; n.y=raw.y??0; n.freeX=raw.freeX??n.x; n.freeY=raw.freeY??n.y;
+      n.pinned=!!raw.pinned; n.memo=String(raw.memo||'');
+      n.createdAt = raw.createdAt? new Date(raw.createdAt) : new Date();
+      return n;
+    });
+    edges = es
+      .filter(e=>
+        Number.isInteger(e.a) && Number.isInteger(e.b) &&
+        e.a >= 0 && e.b >= 0 && e.a < nodes.length && e.b < nodes.length &&
+        e.a !== e.b
+      )
+      .map(e=> new Edge(e.a, e.b));
+    if (Number.isInteger(data.nextId)) {
+      nextId = data.nextId;
+    } else {
+      const maxId = nodes.reduce((m,n)=> Math.max(m, n.id|0), -1);
+      nextId = maxId + 1;
+    }
+    if(data.camera){ camScale=+data.camera.camScale||camScale; camX=+data.camera.camX||0; camY=+data.camera.camY||0; }
+    computeOrbitTargets(); applyOrbitTargetsInstant(); updateMinScale();
+    return true;
+  }catch(err){ console.error('restoreGraph error', err); return false; }
+}
+function loadFromSession(){
+  try{
+    const raw = sessionStorage.getItem(SESSION_KEY);
+    if(!raw) return false;
+    const obj = JSON.parse(raw);
+    return restoreGraph(obj);
+  }catch(err){ console.warn('session load failed', err); return false; }
+}
+function exportJSON(){
+  const blob = new Blob([JSON.stringify(serializeGraph(), null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().replace(/[:.]/g,'-');
+  a.href = url; a.download = `graph-${stamp}.json`; a.click();
+  URL.revokeObjectURL(url);
+}
+async function importJSONFile(file){
+  if(!file) return;
+  try{
+    const text = await file.text();
+    const obj = JSON.parse(text);
+    if(restoreGraph(obj)){ saveToSession(); }
+    else { alert('불러오기 실패: 파일 형식이 올바르지 않습니다.'); }
+  }catch(err){
+    console.error('importJSON error', err);
+    alert('불러오기 중 오류가 발생했습니다.');
+  }
+}
 
   // ===== Camera helpers =====
   function viewCenter(){ return {cx:canvas.width/DPR/2, cy:canvas.height/DPR/2}; }
@@ -226,7 +319,8 @@
     if(orbitMix>0.5){ const ox=Math.cos(n.angle)*n.radius, oy=Math.sin(n.angle)*n.radius; n.offX=w.x-ox; n.offY=w.y-oy; }
     else { n.freeX=w.x-dragOffX; n.freeY=w.y-dragOffY; n.pinned=true; } }
 
-  function onUp(){ if(isPanning){ camTX=0; camTY=0; camVX=panVelX; camVY=panVelY; wobbleVX+=panVelX*WOB_GAIN; wobbleVY+=panVelY*WOB_GAIN; }
+  function onUp(){
+    if(isPanning){ camTX=0; camTY=0; camVX=panVelX; camVY=panVelY; wobbleVX+=panVelX*WOB_GAIN; wobbleVY+=panVelY*WOB_GAIN; }
     isPanning=false; dragging=false; dragIndex=-1; canvas.classList.remove('drag'); }
 
   canvas.addEventListener('mousedown',onDown); window.addEventListener('mousemove',onMove); window.addEventListener('mouseup',onUp); canvas.addEventListener('contextmenu',onContextMenu); canvas.addEventListener('mouseleave',()=>{ mouseIn=false; hoverIndex=-1; });
@@ -234,6 +328,15 @@
   // ===== Step =====
   const easeInOut=(t)=>t<0.5? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
   const easeOutBack=(p)=>{ const s=1.70158; return (p-1)*(p-1)*((s+1)*(p-1)+s)+1; };
+  // helpers for shuffle tween
+  const TWO_PI = Math.PI * 2;
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function lerpAngle(a, b, t) {
+    // shortest arc interpolation
+    let d = (b - a) % TWO_PI;
+    if (d < -Math.PI) d += TWO_PI; else if (d > Math.PI) d -= TWO_PI;
+    return a + d * t;
+  }
 
   function step(dt){
     // layout tween
@@ -259,7 +362,7 @@
         else { const tt=(t-0.7)/0.3; const wob = Math.sin(tt*8*Math.PI) * (1-tt) * 6; const dx=n.targetX-n.startX, dy=n.targetY-n.startY; const L=Math.hypot(dx,dy)||1; const nx=-dy/L, ny=dx/L; n.x = n.targetX + nx*wob; n.y = n.targetY + ny*wob; const squ = 1 + 0.3*(1-tt); n.scaleX = squ; n.scaleY = 1/squ; n.fade = Math.max(0, 1 - tt*1.2); }
         if(t>=1){ // remove node & edges
           const removeIdx = nodes.indexOf(n);
-          if(removeIdx>=0){ edges = edges.filter(e=> e.a!==removeIdx && e.b!==removeIdx); nodes.splice(removeIdx,1); for(const e of edges){ if(e.a>removeIdx) e.a--; if(e.b>removeIdx) e.b--; } startOrbitRelayout(); }
+          if(removeIdx>=0){ edges = edges.filter(e=> e.a!==removeIdx && e.b!==removeIdx); nodes.splice(removeIdx,1); for(const e of edges){ if(e.a>removeIdx) e.a--; if(e.b>removeIdx) e.b--; } startOrbitRelayout(); saveToSession(); }
           break; // nodes array changed
         }
       }
@@ -283,6 +386,26 @@
       }
     }
 
+    // apply shuffle tween (position + angle) if present
+    for (const n of nodes) {
+      if (!n.shuffle) continue;
+
+      n.shuffle.t = Math.min(1, n.shuffle.t + dt / n.shuffle.dur);
+      const s = easeInOut(n.shuffle.t);
+
+      // Web: free position 보간
+      n.freeX = lerp(n.shuffle.startFX, n.shuffle.targetFX, s);
+      n.freeY = lerp(n.shuffle.startFY, n.shuffle.targetFY, s);
+
+      // Orbit: angle 보간 (회전 방향은 최단 경로)
+      n.angle = lerpAngle(n.shuffle.startAngle, n.shuffle.targetAngle, s);
+
+      // 보간 중에는 물리 속도를 0으로 유지
+      n.vx = 0; n.vy = 0;
+
+      if (n.shuffle.t >= 1) n.shuffle = null;
+    }
+
     // hover focus easing
     for(let i=0;i<nodes.length;i++){
       const n=nodes[i]; let scaleTarget=1, tintTarget=0; if(mouseIn){ const p=worldToScreen(n.x,n.y); const dx=mouseSX-p.x, dy=mouseSY-p.y; const d=Math.hypot(dx,dy); if(d<FOCUS_NEAR_PX){ scaleTarget = 1 + (1 - d/FOCUS_NEAR_PX)*0.25; } if(i===hoverIndex){ tintTarget = 1; } } const k=Math.min(1,HOVER_SPEED*dt); n.uiScale += (scaleTarget-n.uiScale)*k; n.uiTint  += (tintTarget-n.uiTint)*k; }
@@ -296,7 +419,15 @@
   }
 
   // ===== Draw =====
-  function draw(){ const W=canvas.width/DPR, H=canvas.height/DPR; ctx.clearRect(0,0,W,H); const {cx,cy}=viewCenter(); ctx.save(); ctx.translate(cx,cy); ctx.scale(camScale,camScale); ctx.translate(-camX,-camY); ctx.translate(wobbleX, wobbleY);
+  function draw(){
+    const W=canvas.width/DPR, H=canvas.height/DPR;
+    ctx.clearRect(0,0,W,H);
+    const {cx,cy}=viewCenter();
+    ctx.save();
+    ctx.translate(cx,cy);
+    ctx.scale(camScale,camScale);
+    ctx.translate(-camX,-camY);
+    ctx.translate(wobbleX, wobbleY);
     // orbit rings — 부드러운 등장/사라짐
     const baseAlpha = 0.18*orbitMix;
     if(ringTransition){ const s=easeInOut(ringTransition.t); ctx.lineWidth=1/camScale; for(const r of ringTransition.prev){ const rad=R_BASE+(r-1)*R_STEP; ctx.strokeStyle=`rgba(124,192,255,${(baseAlpha*(1-s)).toFixed(3)})`; ctx.beginPath(); ctx.arc(0,0,rad,0,Math.PI*2); ctx.stroke(); } for(const r of ringTransition.next){ const rad=R_BASE+(r-1)*R_STEP; ctx.strokeStyle=`rgba(124,192,255,${(baseAlpha*s).toFixed(3)})`; ctx.beginPath(); ctx.arc(0,0,rad,0,Math.PI*2); ctx.stroke(); } } else if(orbitMix>0) { const used=new Set(nodes.filter(n=>n.ring>0).map(n=>n.ring)); ctx.lineWidth=1/camScale; ctx.strokeStyle=`rgba(124,192,255,${baseAlpha.toFixed(3)})`; for(const r of Array.from(used).sort((a,b)=>a-b)){ const rad=R_BASE+(r-1)*R_STEP; ctx.beginPath(); ctx.arc(0,0,rad,0,Math.PI*2); ctx.stroke(); } }
@@ -308,7 +439,87 @@
     for(const n of nodes){ const alpha=n.fade; if(alpha<=0) continue; ctx.save(); ctx.translate(n.x,n.y); ctx.scale(n.scaleX, n.scaleY); const s=n.uiScale; const outer=(n.size+6)*s; const inner=n.size*s; // outer glow
       ctx.beginPath(); ctx.fillStyle=`rgba(124,192,255,${(0.16*alpha).toFixed(3)})`; ctx.arc(0,0,outer,0,Math.PI*2); ctx.fill(); // inner fill with tint
       const t = 0.7 * n.uiTint; const r = Math.round(207*(1-t) + 255*t); const g = Math.round(232*(1-t) + 235*t); const b = Math.round(255*(1-t) + 200*t); ctx.beginPath(); ctx.fillStyle=`rgba(${r},${g},${b},${alpha.toFixed(3)})`; ctx.arc(0,0,inner,0,Math.PI*2); ctx.fill(); ctx.restore(); }
+    // === HUD overlay (screen space) ===
+    if (dragging && dragIndex >= 0) {
+      const n = nodes[dragIndex];
+      const p = worldToScreen(n.x, n.y);
+      drawSpeechBubbleHUD(p.x, p.y, n);
+    }
     ctx.restore(); }
+
+// ===== HUD (speech bubble) =====
+function drawSpeechBubbleHUD(sx, sy, node){
+  const padX=10, padY=8, maxW=240, lineH=16;
+  ctx.save();
+  ctx.setTransform(DPR,0,0,DPR,0,0); // screen space(줌 무시)
+  ctx.font = '12px "Noto Sans KR", sans-serif';
+
+  const dt   = node.createdAt ? new Date(node.createdAt).toLocaleString('ko-KR') : '생성시간: -';
+  const memo = node.memo || '(메모 없음)';
+  const lines = wrapText(['생성: ' + dt, '메모: ' + memo], maxW, ctx);
+
+  const widths   = lines.map(t => ctx.measureText(t).width);
+  const maxWidth = widths.length ? Math.max.apply(null, widths) : 0;
+  const boxW     = Math.min(maxW, maxWidth + padX*2);
+  const boxH     = lineH*lines.length + padY*2;
+
+  const offsetX = 16, offsetY = -24; // node 오른쪽 위로 배치
+  const x = sx + offsetX, y = sy + offsetY - boxH;
+
+  // bubble
+  ctx.fillStyle   = 'rgba(20,28,36,0.96)';
+  ctx.strokeStyle = 'rgba(124,192,255,0.4)';
+  roundRect(ctx, x, y, boxW, boxH, 10);
+  ctx.fill(); ctx.stroke();
+
+  // tail(꼬리)
+  ctx.beginPath();
+  ctx.moveTo(sx+6, sy-4);
+  ctx.lineTo(x+12, y+boxH-2);
+  ctx.lineTo(x+24, y+boxH-2);
+  ctx.closePath();
+  ctx.fill(); ctx.stroke();
+
+  // text
+  ctx.fillStyle = '#cfe8ff';
+  let ty = y + padY + 12;
+  for (let i=0; i<lines.length; i++) {
+    ctx.fillText(lines[i], x+padX, ty);
+    ty += lineH;
+  }
+  ctx.restore();
+}
+
+function wrapText(inputLines, maxW, c){
+  const out=[];
+  for(let k=0;k<inputLines.length;k++){
+    const raw=String(inputLines[k]);
+    const words=raw.split(/\s+/);
+    let cur='';
+    for(let wi=0;wi<words.length;wi++){
+      const w=words[wi];
+      const test = cur ? cur+' '+w : w;
+      if(c.measureText(test).width > maxW){
+        if(cur) out.push(cur);
+        cur=w;
+      } else {
+        cur=test;
+      }
+    }
+    if(cur) out.push(cur);
+  }
+  return out.slice(0,4); // 최대 4줄
+}
+
+function roundRect(c, x, y, w, h, r){
+  c.beginPath();
+  c.moveTo(x+r, y);
+  c.arcTo(x+w, y,   x+w, y+h, r);
+  c.arcTo(x+w, y+h, x,   y+h, r);
+  c.arcTo(x,   y+h, x,   y,   r);
+  c.arcTo(x,   y,   x+w, y,   r);
+  c.closePath();
+}
 
   // ===== Loop =====
   let last=performance.now(); function loop(now){ const dt=Math.min(0.05,(now-last)/1000); last=now; step(dt); draw(); requestAnimationFrame(loop); }
@@ -317,13 +528,23 @@
   function screenSize(){ return {W: canvas.width/DPR, H: canvas.height/DPR}; }
   function pickNearestEdgeScreen(x,y){ const {W,H}=screenSize(); const dLeft=x, dRight=W-x, dTop=y, dBottom=H-y; const min=Math.min(dLeft,dRight,dTop,dBottom); if(min===dLeft) return {side:'left', tx:-40, ty:y}; if(min===dRight) return {side:'right', tx:W+40, ty:y}; if(min===dTop) return {side:'top', tx:x, ty:-40}; return {side:'bottom', tx:x, ty:H+40}; }
 
-  function addNodeAnimated(){
+  function addNodeAnimated(showPrompt = false){
+    let memo = "";
+    if (showPrompt) {
+      const userInput = prompt("새 노드에 대한 메모를 입력하세요:", "");
+      memo = (userInput === null) ? "" : userInput;
+    }
+
     const newIndex = nodes.length; // will become index after push
     const n = new Node(nextId++);
+    n.createdAt = new Date();
+    n.memo = memo;
+
     // connect to 2..4 random existing nodes (if any)
     const connectN = nodes.length>0 ? (2 + Math.floor(Math.random()*3)) : 0; // 2-4
     if(connectN>0){ const candidates=[...Array(nodes.length).keys()]; for(let t=0;t<connectN && candidates.length>0;t++){ const idx=Math.floor(Math.random()*candidates.length); const j=candidates.splice(idx,1)[0]; edges.push(new Edge(newIndex, j)); } }
     nodes.push(n);
+    saveToSession();
 
     // offscreen start
     const {W,H}=screenSize(); const sides=['left','right','top','bottom']; const side=sides[Math.floor(Math.random()*sides.length)]; let sx,sy; if(side==='left'){ sx=-60; sy=Math.random()*H; } else if(side==='right'){ sx=W+60; sy=Math.random()*H; } else if(side==='top'){ sx=Math.random()*W; sy=-60; } else { sx=Math.random()*W; sy=H+60; }
@@ -357,15 +578,52 @@
   window.addEventListener('keydown', (ev)=>{ if(!showingConfirm) return; if(ev.key==='Escape'){ closeConfirm(); pendingDeleteIndex=-1; } });
   btnDelete.addEventListener('click', ()=>{ if(pendingDeleteIndex<0){ closeConfirm(); return; } const n=nodes[pendingDeleteIndex]; if(!n){ closeConfirm(); pendingDeleteIndex=-1; return; } const sp = worldToScreen(n.x,n.y); const tgt = pickNearestEdgeScreen(sp.x, sp.y); const worldT = screenToWorld(tgt.tx, tgt.ty); n.animMode='exit'; n.animT=0; n.animDur=1.1; n.startX=n.x; n.startY=n.y; n.targetX=worldT.x; n.targetY=worldT.y; n.pinned=true; n.scaleX=1.15; n.scaleY=0.85; closeConfirm(); pendingDeleteIndex=-1; });
 
+  function shufflePositions(){
+    const R = computeContentRadius();
+    const D = 0.9; // duration seconds
+
+    for (const n of nodes) {
+      // orbit: 새 목표 각도(보간으로 이동)
+      const targetAngle = Math.random() * Math.PI * 2;
+      const startAngle  = n.angle;
+
+      // web: 새 목표 위치(보간으로 이동)
+      const a = Math.random() * Math.PI * 2;
+      const rr = 40 + Math.random() * R;
+      const targetFX = Math.cos(a) * rr, targetFY = Math.sin(a) * rr;
+      const startFX = n.freeX,        startFY = n.freeY;
+
+      n.shuffle = {
+        t: 0, dur: D,
+        startAngle, targetAngle,
+        startFX, startFY, targetFX, targetFY,
+      };
+
+      // 물리 영향 제거
+      n.vx = 0; n.vy = 0;
+      n.offX = 0; n.offY = 0;
+    }
+
+    computeOrbitTargets();
+    saveToSession();
+  }
+
   // ===== UI =====
   const btnLayout=document.getElementById('toggleLayout');
   const btnEdges=document.getElementById('toggleEdges');
   const btnShuffle=document.getElementById('shuffle');
   const btnAdd=document.getElementById('addNode');
+  const btnSave = document.getElementById('saveJSON');
+  const btnLoad = document.getElementById('loadJSON');
+  const fileInput = document.getElementById('fileInput');
+
   btnLayout.addEventListener('click',()=>{ if(orbitTarget===1){ for(const n of nodes){ n.freeX=n.x; n.freeY=n.y; } orbitTarget=0; orbitActive=false; btnLayout.textContent='Layout: Web'; btnLayout.setAttribute('aria-pressed','false'); } else { for(const n of nodes){ n.pinned=false; } orbitTarget=1; orbitActive=true; btnLayout.textContent='Layout: Orbit'; btnLayout.setAttribute('aria-pressed','true'); } });
   btnEdges.addEventListener('click',()=>{ showEdges=!showEdges; btnEdges.textContent=showEdges?'Edges: On':'Edges: Off'; btnEdges.setAttribute('aria-pressed', showEdges?'true':'false'); });
-  btnShuffle.addEventListener('click',()=>{ makeGraph(); });
-  btnAdd.addEventListener('click',()=>{ addNodeAnimated(); });
+  btnShuffle.addEventListener('click', shufflePositions);
+  btnAdd.addEventListener('click',()=>{ addNodeAnimated(true); });
+  btnSave.addEventListener('click', exportJSON);
+  btnLoad.addEventListener('click', ()=> fileInput.click());
+  fileInput.addEventListener('change', (e)=> importJSONFile(e.target.files[0]));
 
   // ===== Dev Tests (runtime assertions) =====
   function devTests(){
@@ -390,13 +648,23 @@
       // trigger removal test by deleting the last node via synthetic exit
       const last=nodes[nodes.length-1]; last.animMode='exit'; last.animT=0; last.animDur=0.2; last.startX=last.x; last.startY=last.y; const sc=worldToScreen(last.x,last.y); const edge=pickNearestEdgeScreen(sc.x,sc.y); const wt=screenToWorld(edge.tx,edge.ty); last.targetX=wt.x; last.targetY=wt.y; last.pinned=true;
       console.groupEnd();
+
+      console.groupCollapsed('%cShuffleTweenTest','color:#6f9');
+      const beforeCount = nodes.length;
+      shufflePositions();
+      const hasTween = nodes.length === 0 ? true : nodes.some(n => n.shuffle && n.shuffle.dur > 0);
+      console.assert(hasTween, 'shuffle sets tween state on at least one node (or empty graph)');
+      console.groupEnd();
     }catch(err){ console.error('DevTests error', err); }
   }
 
   // ===== Start =====
-  makeGraph(); devTests(); requestAnimationFrame(loop);
+  if (!loadFromSession()) {
+    makeGraph();
+  }
+  devTests();
+  requestAnimationFrame(loop);
 })();
 </script>
 </body>
 </html>
-
