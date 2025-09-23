@@ -10,9 +10,17 @@
   <style>
     :root { --bg:#0b0f14; --fg:#cfe8ff; --muted:#7d8da3; }
     html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:'Noto Sans KR', Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
-    #topbar{position:fixed;left:10px;top:10px;display:flex;gap:8px;z-index:10}
+    /* Collapsible UI Panel */
+    #uiPanel{position:fixed;left:10px;top:10px;z-index:10;min-width:220px}
+    #uiToggle{background:rgba(124,192,255,.14);color:var(--fg);border:1px solid rgba(124,192,255,.28);border-radius:10px;padding:6px 10px;font-size:12px;cursor:pointer}
+    #uiToggle:hover{background:rgba(124,192,255,.22)}
+    #topbar{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;max-height:500px;overflow:hidden;transition:max-height .25s ease, opacity .2s ease;opacity:1}
+    #topbar.collapsed{max-height:0;opacity:0;pointer-events:none;margin-top:0}
     #topbar button{background:rgba(124,192,255,.12);color:var(--fg);border:1px solid rgba(124,192,255,.25);border-radius:10px;padding:6px 10px;font-size:12px;cursor:pointer}
     #topbar button:hover{background:rgba(124,192,255,.22)}
+    /* Floating Add button */
+    .fab{position:fixed;right:18px;bottom:18px;z-index:10;width:44px;height:44px;border-radius:999px;border:1px solid rgba(124,192,255,.35);background:rgba(124,192,255,.14);color:var(--fg);font-size:22px;line-height:42px;text-align:center;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.24)}
+    .fab:hover{background:rgba(124,192,255,.24)}
     #stage{display:block;width:100%;height:100%;cursor:grab;touch-action:none}
     #stage.drag{cursor:grabbing}
     /* Modal styles */
@@ -45,22 +53,25 @@
       color: var(--muted);
       margin-top: 4px;
     }
+    #addNodeBackdrop{position:fixed;inset:0;background:rgba(0,0,0,.35);backdrop-filter:saturate(60%) blur(2px);z-index:20}
+    #addNodeModal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:21}
   </style>
 </head>
 <body>
-  <div id="topbar">
-    <button id="toggleLayout" aria-pressed="true">Layout: Orbit</button>
-    <button id="toggleEdges" aria-pressed="true">Edges: On</button>
-    <button id="shuffle">Shuffle</button>
-    <button id="addNode">Add Node</button>
-    <button id="saveJSON">Save JSON</button>
-    <button id="loadJSON">Load JSON</button>
-    <input type="file" id="fileInput" style="display:none" accept="application/json" />
-    <span class="sep"></span>
-    <label for="motion" style="font-size:12px;opacity:.85">Motion</label>
-    <input id="motion" type="range" min="0.5" max="1.5" step="0.1" value="1.0" />
-    <span id="motionVal" style="font-size:12px;opacity:.85">×1.0</span>
+  <div id="uiPanel">
+    <button id="uiToggle" aria-expanded="true" title="접기/펼치기">▲ UI</button>
+    <div id="topbar">
+      <button id="toggleLayout" aria-pressed="true">Layout: Orbit</button>
+      <button id="toggleEdges" aria-pressed="true">Edges: On</button>
+      <button id="shuffle">Shuffle</button>
+      <button id="saveJSON">extract</button>
+      <button id="loadJSON">import</button>
+      <input type="file" id="fileInput" style="display:none" accept="application/json" />
+    </div>
   </div>
+  <!-- Floating Add Node button (screen-fixed) -->
+  <button id="fabAdd" class="fab" title="노드 추가">＋</button>
+
   <canvas id="stage"></canvas>
   <!-- Confirm Delete Modal -->
   <div id="confirmBackdrop" style="display:none"></div>
@@ -486,24 +497,27 @@ async function importJSONFile(file){
       let scaleTarget = 1, tintTarget = 0;
 
       if (dragging && dragIndex >= 0) {
-        if (i === dragIndex) {
-          // 드래그 중인 노드: 가장 강조
-          scaleTarget = 1.35; tintTarget = 1.0;
-        } else if (dragAdj && dragAdj.has(i)) {
-          // 이웃 노드: 약하게 강조
-          scaleTarget = 1.15; tintTarget = 0.6;
-        } else {
-          // 그 외: 살짝 디밍
-          scaleTarget = 0.94; tintTarget = 0.0;
-        }
+        // 드래그 포커스: 드래그 노드 > 이웃 > 기타
+        if (i === dragIndex) { scaleTarget = 1.35; tintTarget = 1.0; }
+        else if (dragAdj && dragAdj.has(i)) { scaleTarget = 1.15; tintTarget = 0.6; }
+        else { scaleTarget = 0.94; tintTarget = 0.0; }
+      } else if (mouseIn) {
+        // Hover 근접도 기반: 가까울수록 크게/밝게
+        const p = worldToScreen(n.x, n.y);        // 월드→스크린
+        const dx = mouseSX - p.x, dy = mouseSY - p.y;
+        const d  = Math.hypot(dx, dy);
+        const near = FOCUS_NEAR_PX;               // 기존 파일에 정의됨 (80px)
+        const w = Math.max(0, Math.min(1, 1 - d / near)); // 0..1
+
+        scaleTarget = 1 + 0.25 * w;               // 최대 +25%
+        tintTarget  = 0.85 * w;                   // 미세 색상 강조
       } else {
-        // 드래그 안 할 땐 중립 (hover 기반 확대/틴트는 더 이상 사용하지 않음)
         scaleTarget = 1.0; tintTarget = 0.0;
       }
 
-      const k = Math.min(1, HOVER_SPEED * dt);
+      const k = Math.min(1, HOVER_SPEED * dt);    // 기존 파일에 정의됨 (10)
       n.uiScale += (scaleTarget - n.uiScale) * k;
-      n.uiTint  += (tintTarget - n.uiTint) * k;
+      n.uiTint  += (tintTarget - n.uiTint)  * k;
     }
 
     // orbit advance & drag-offset decay
@@ -532,9 +546,56 @@ async function importJSONFile(file){
     if(showEdges){ ctx.lineWidth=1.1/camScale; for(const e of edges){ const a=nodes[e.a], b=nodes[e.b]; let alpha=Math.min(a?.fade??1,b?.fade??1)*0.35; if (dragging && dragIndex >= 0) { const hit = (e.a === dragIndex || e.b === dragIndex); alpha = hit ? 0.70 : 0.10; } if(!a||!b||alpha<=0) continue; ctx.strokeStyle=`rgba(124,192,255,${alpha.toFixed(3)})`; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); } }
 
     // nodes
-    for(const n of nodes){ const alpha=n.fade; if(alpha<=0) continue; ctx.save(); ctx.translate(n.x,n.y); ctx.scale(n.scaleX, n.scaleY); const s=n.uiScale; const outer=(n.size+6)*s; const inner=n.size*s; // outer glow
-      ctx.beginPath(); ctx.fillStyle=`rgba(124,192,255,${(0.16*alpha).toFixed(3)})`; ctx.arc(0,0,outer,0,Math.PI*2); ctx.fill(); // inner fill with tint
-      const t = 0.7 * n.uiTint; const r = Math.round(207*(1-t) + 255*t); const g = Math.round(232*(1-t) + 235*t); const b = Math.round(255*(1-t) + 200*t); ctx.beginPath(); ctx.fillStyle=`rgba(${r},${g},${b},${alpha.toFixed(3)})`; ctx.arc(0,0,inner,0,Math.PI*2); ctx.fill(); ctx.restore(); }
+    for (let i=0;i<nodes.length;i++){
+      const n = nodes[i];
+      const alpha = n.fade; if(alpha<=0) continue;
+
+      const isDrag = dragging && i===dragIndex;
+      const isAdj  = dragging && dragAdj && dragAdj.has(i);
+
+      ctx.save();
+      ctx.translate(n.x,n.y);
+      ctx.scale(n.scaleX, n.scaleY);
+
+      const s = n.uiScale;
+      const outer = (n.size+6)*s;
+      const inner = n.size*s;
+
+      // subtle shadow for drag emphasis
+      if (isDrag || isAdj) {
+        ctx.shadowColor = 'rgba(0,0,0,0.35)';
+        ctx.shadowBlur  = isDrag ? 12 : 8;
+      } else {
+        ctx.shadowBlur = 0;
+      }
+
+      // outer glow
+      ctx.beginPath();
+      ctx.fillStyle=`rgba(124,192,255,${(0.16*alpha).toFixed(3)})`;
+      ctx.arc(0,0,outer,0,Math.PI*2);
+      ctx.fill();
+
+      // inner fill with proximity tint (uiTint는 step에서 계산됨)
+      const t = 0.7 * n.uiTint;
+      const r = Math.round(207*(1-t) + 255*t);
+      const g = Math.round(232*(1-t) + 235*t);
+      const b = Math.round(255*(1-t) + 200*t);
+      ctx.beginPath();
+      ctx.fillStyle=`rgba(${r},${g},${b},${alpha.toFixed(3)})`;
+      ctx.arc(0,0,inner,0,Math.PI*2);
+      ctx.fill();
+
+      // outline when dragging for clarity (화면 고정 두께)
+      if (isDrag || isAdj) {
+        ctx.beginPath();
+        ctx.lineWidth = (isDrag ? 2.0 : 1.4) / camScale;
+        ctx.strokeStyle = isDrag ? 'rgba(200,235,255,0.95)' : 'rgba(180,220,255,0.75)';
+        ctx.arc(0,0,inner + (isDrag ? 1.0 : 0.5), 0, Math.PI*2);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+    }
     // === HUD overlay (screen space) ===
     if (dragging && dragIndex >= 0) {
       const n = nodes[dragIndex];
@@ -610,7 +671,7 @@ function roundRect(c, x, y, w, h, r){
 }
 
   // ===== Loop =====
-  let last=performance.now(); function loop(now){ const dt=Math.min(0.05,(now-last)/1000); last=now; step(dt * (window.MOTION || MOTION || 1.0)); draw(); requestAnimationFrame(loop); }
+  let last=performance.now(); function loop(now){ const dt=Math.min(0.05,(now-last)/1000); last=now; step(dt); draw(); requestAnimationFrame(loop); }
 
   // ===== Add/Delete (animated) =====
   function screenSize(){ return {W: canvas.width/DPR, H: canvas.height/DPR}; }
@@ -739,27 +800,28 @@ function roundRect(c, x, y, w, h, r){
   const btnLayout=document.getElementById('toggleLayout');
   const btnEdges=document.getElementById('toggleEdges');
   const btnShuffle=document.getElementById('shuffle');
-  const btnAdd=document.getElementById('addNode');
+  const fabAdd = document.getElementById('fabAdd');
   const btnSave = document.getElementById('saveJSON');
   const btnLoad = document.getElementById('loadJSON');
   const fileInput = document.getElementById('fileInput');
+  const uiToggle = document.getElementById('uiToggle');
+  const topbarEl = document.getElementById('topbar');
+
+  uiToggle?.addEventListener('click', ()=>{
+    const collapsed = topbarEl.classList.toggle('collapsed');
+    uiToggle.textContent = collapsed ? '▼ UI' : '▲ UI';
+    uiToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+  });
 
   btnLayout.addEventListener('click',()=>{ if(orbitTarget===1){ for(const n of nodes){ n.freeX=n.x; n.freeY=n.y; } orbitTarget=0; orbitActive=false; btnLayout.textContent='Layout: Web'; btnLayout.setAttribute('aria-pressed','false'); } else { for(const n of nodes){ n.pinned=false; } orbitTarget=1; orbitActive=true; btnLayout.textContent='Layout: Orbit'; btnLayout.setAttribute('aria-pressed','true'); } });
   btnEdges.addEventListener('click',()=>{ showEdges=!showEdges; btnEdges.textContent=showEdges?'Edges: On':'Edges: Off'; btnEdges.setAttribute('aria-pressed', showEdges?'true':'false'); });
   btnShuffle.addEventListener('click', shufflePositions);
-  btnAdd.addEventListener('click', openAddNodeModal);
+  fabAdd.addEventListener('click', openAddNodeModal);
   btnSave.addEventListener('click', exportJSON);
   btnLoad.addEventListener('click', ()=> fileInput.click());
   fileInput.addEventListener('change', (e)=> importJSONFile(e.target.files[0]));
 
-  // Motion slider (global speed)
-  let MOTION = 1.0;
-  const motionEl  = document.getElementById('motion');
-  const motionVal = document.getElementById('motionVal');
-  motionEl?.addEventListener('input', () => {
-    MOTION = parseFloat(motionEl.value) || 1.0;
-    if (motionVal) motionVal.textContent = `×${MOTION.toFixed(1)}`;
-  });
+
 
   // ===== Dev Tests (runtime assertions) =====
   function devTests(){
