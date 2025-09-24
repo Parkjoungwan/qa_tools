@@ -63,6 +63,11 @@
     <button id="uiToggle" aria-expanded="true" title="접기/펼치기">▲ Tool</button>
     <div id="topbar">
       <button id="toggleLayout" aria-pressed="true">Layout: Orbit</button>
+      <button id="togglePlay" aria-pressed="false">Play</button>
+<label style="display:inline-flex;align-items:center;gap:6px;font-size:12px;opacity:.9">BPM
+  <input id="bpm" type="range" min="60" max="180" step="1" value="100" />
+  <span id="bpmVal">100</span>
+</label>
       <button id="toggleEdges" aria-pressed="true">Edges: On</button>
       <button id="shuffle">Shuffle</button>
       <button id="toggleMusic" aria-pressed="false">🎵 Music: Off</button>
@@ -78,9 +83,21 @@
         <label for="exportBarsInput">Bars</label>
         <input type="number" id="exportBarsInput" min="1" max="64" value="4" />
       </div>
-      <div class="slider-container">
+      <div class="slider-container audio-control">
         <label for="chordVolumeSlider">Chord Vol</label>
         <input type="range" id="chordVolumeSlider" min="0" max="1" step="0.01" value="0.3" />
+      </div>
+      <div class="slider-container audio-control">
+        <label for="reverbSlider">Reverb</label>
+        <input type="range" id="reverbSlider" min="0" max="1" step="0.01" value="0.3" />
+      </div>
+      <div class="slider-container audio-control">
+        <label for="compThresholdSlider">Comp Thresh</label>
+        <input type="range" id="compThresholdSlider" min="-60" max="0" step="1" value="-18" />
+      </div>
+      <div class="slider-container audio-control">
+        <label for="compRatioSlider">Comp Ratio</label>
+        <input type="range" id="compRatioSlider" min="1" max="20" step="1" value="12" />
       </div>
       <input type="file" id="fileInput" style="display:none" accept="application/json" />
     </div>
@@ -146,6 +163,47 @@
   const SESSION_KEY = 'graphState.v1';
   let nodes=[], edges=[]; let showEdges=true;
 
+// ===== Harmony & Transport =====
+let BPM = 100;                // tempo (for chord timeline)
+const BEATS_PER_BAR = 4;      // 4/4
+const STEPS_PER_BEAT = 4;     // 16th grid (ready for future)
+const MS_PER_BEAT = ()=> 60000 / BPM;
+let isPlaying = false;
+let currentBar = 0;           // 0..CHORD_TIMELINE.length-1
+let nextBarDue = 0;           // ms deadline (performance.now)
+
+// Key / Scale (Major) and chord degrees (triads by default)
+const KEY = { tonicMidi: 60, mode: 'major' }; // C4 major
+const DEGREE_TO_OFFSETS = {
+  'I':  [0,4,7],
+  'ii': [2,5,9],
+  'iii':[4,7,11],
+  'IV': [5,9,12],
+  'V':  [7,11,14],
+  'vi': [9,12,16],
+  'vii°':[11,14,17]
+};
+// Default 4-bar pop progression
+const CHORD_TIMELINE = ['I','V','vi','IV'];
+
+function degreeToChord(deg){ const ofs = DEGREE_TO_OFFSETS[deg]||DEGREE_TO_OFFSETS['I']; return ofs.map(o=>KEY.tonicMidi + o); }
+
+// Assign role per ring: bass / chord / upper (octave offsets)
+function ringRoleOffset(n){
+  const r = Math.hypot(n.x,n.y);
+  if(r < 140) return -24; // inner: bass (C2 vicinity)
+  if(r < 260) return 0;   // mid: chord tones around C4
+  return +12;             // outer: upper extension
+}
+
+// Voice-leading: pick nearest pitch to previous
+function nearestPitch(prev, candidates){
+  if(!isFinite(prev)) return candidates[0];
+  let best = candidates[0]; let bd = Infinity;
+  for(const c of candidates){ const d = Math.abs(c - prev); if(d < bd){ bd=d; best=c; } }
+  return best;
+}
+
 // ===== Audio (Web Audio API) =====
 const Audio = {
   ctx: null,
@@ -172,15 +230,26 @@ const Audio = {
     compressor.attack.value = 0.005;
     compressor.release.value = 0.15;
 
-    // Connect the main chain: master -> reverb -> compressor -> destination
-    master.connect(reverb);
+    const dryGain = ctx.createGain();
+    const wetGain = ctx.createGain();
+    wetGain.gain.value = 0.3; // Default reverb level
+    dryGain.gain.value = 0.7;
+
+    // Connect the parallel chains
+    master.connect(dryGain);
+    master.connect(wetGain);
+    wetGain.connect(reverb);
+
+    dryGain.connect(compressor);
     reverb.connect(compressor);
     compressor.connect(ctx.destination);
 
-    this.ctx = ctx; 
+    this.ctx = ctx;
     this.master = master;
     this.reverb = reverb;
     this.compressor = compressor;
+    this.dryGain = dryGain;
+    this.wetGain = wetGain;
   },
 
   createImpulseResponse(ctx) {
@@ -273,9 +342,9 @@ function assignNodeChords() {
   let currentBeat = 0, beatTime = 0;
   let exportBars = 4;
   let playheads = [{ id: 0, angle: Math.PI / 2 }];
-  const BEATS_PER_BAR = 16;
+  const STEPS_PER_BAR = 16;
   const TEMPO = 120; // beats per minute (reverted to original)
-  const TIME_PER_BEAT = 60 / TEMPO / (BEATS_PER_BAR / 4); // Time per 16th note
+  const TIME_PER_STEP = 60 / TEMPO / (STEPS_PER_BAR / 4); // Time per 16th note
 
   function resize(){canvas.width=innerWidth*DPR;canvas.height=innerHeight*DPR;ctx.setTransform(DPR,0,0,DPR,0,0); updateMinScale();} resize(); window.addEventListener('resize',resize);
 
@@ -295,6 +364,10 @@ function assignNodeChords() {
       this.startX=0; this.startY=0; this.targetX=0; this.targetY=0;
       this.scaleX=1; this.scaleY=1; // squash/stretch for FX
       this.fade=1;                  // edge/node alpha during anim
+      // harmony state
+this.pitchPrev = NaN;   // last chosen MIDI note
+this.pitchNow  = NaN;   // current MIDI note (for audio engines)
+this.pitchTarget = NaN; // next bar target (for smooth transitions if needed)
       // UI focus state
       this.uiScale=1; this.uiTint=0;
       // music: chord data is now assigned by assignNodeChords()
@@ -377,6 +450,7 @@ function assignNodeChords() {
     assignNodeChords();
     for(const n of nodes){ const ox=Math.cos(n.angle)*n.radius, oy=Math.sin(n.angle)*n.radius; n.x=ox; n.y=oy; n.freeX=ox; n.freeY=oy; n.vx=0; n.vy=0; n.offX=0; n.offY=0; n.pinned=false; n.animMode=null; n.fade=1; n.scaleX=1; n.scaleY=1; }
     nextId = nodes.length; updateMinScale();
+    applyChordToAll(CHORD_TIMELINE[currentBar]);
   }
 
 // ===== Persistence (sessionStorage + import/export) =====
@@ -619,8 +693,8 @@ async function importJSONFile(file){
   }
 
   function scheduleNotes(start, end) {
-    for (let t = start; t < end; t += TIME_PER_BEAT) {
-      const beat = Math.floor(t / TIME_PER_BEAT) % BEATS_PER_BAR;
+    for (let t = start; t < end; t += TIME_PER_STEP) {
+      const step = Math.floor(t / TIME_PER_STEP) % STEPS_PER_BAR;
       const microtimingOffset = (Math.random() * 2 - 1) * MICROTIMING_MAX_OFFSET; // -MAX_OFFSET to +MAX_OFFSET
       const scheduledTime = t + microtimingOffset;
 
@@ -881,6 +955,16 @@ async function importJSONFile(file){
       const p = worldToScreen(n.x, n.y);
       drawSpeechBubbleHUD(p.x, p.y, n);
     }
+    // draw chord info (HUD)
+ctx.save();
+ctx.translate(12, 12);
+ctx.font = '12px "Noto Sans KR"';
+ctx.fillStyle='rgba(200,235,255,0.8)';
+ctx.fillText(
+  `Chord ${currentBar+1}/${CHORD_TIMELINE.length}  (bar ${phraseBar+1}/${HARMONY_HOLDBARS})  ${CHORD_TIMELINE[currentBar]}`,
+  0, 12
+);
+ctx.restore();
     ctx.restore(); }
 
 // ===== HUD (speech bubble) =====
@@ -950,7 +1034,39 @@ function roundRect(c, x, y, w, h, r){
 }
 
   // ===== Loop =====
-  let last=performance.now(); function loop(now){ const dt=Math.min(0.05,(now-last)/1000); last=now; step(dt); draw(); requestAnimationFrame(loop); }
+  let last = performance.now();
+function loop(now){
+  const dt = Math.min(0.05, (now - last) / 1000);
+  last = now;
+  if (isPlaying && now >= nextBarDue) {
+    // 한 마디 경과
+    nextBarDue = now + BEATS_PER_BAR * MS_PER_BEAT();
+
+    // 현재 화음 내에서 마디 진행
+    phraseBar = (phraseBar + 1) % HARMONY_HOLDBARS;
+
+    // phraseBar가 0으로 되돌아올 때만 다음 화음으로
+    if (phraseBar === 0) {
+      currentBar = (currentBar + 1) % CHORD_TIMELINE.length;
+      applyChordToAll(CHORD_TIMELINE[currentBar]);
+    }
+  }
+  step(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+
+function applyChordToAll(degree){
+  const chord = degreeToChord(degree);
+  for(const n of nodes){
+    const off = ringRoleOffset(n);
+    // candidate pitches around role octave
+    const candidates = [];
+    for(const co of chord){ candidates.push(co+off-12, co+off, co+off+12); }
+    const chosen = nearestPitch(n.pitchPrev, candidates);
+    n.pitchPrev = n.pitchNow = chosen;
+  }
+}
 
 // ===== Music playback =====
 function playChord(node, t0, ctx, masterNode){
@@ -968,7 +1084,9 @@ function playChord(node, t0, ctx, masterNode){
   ];
   const detunes = [-5, 0, 4]; // Richer detuning
 
-  node.chordMidi.forEach((m, idx)=>{
+  const notesToPlay = Number.isFinite(node.pitchNow) ? [node.pitchNow] : node.chordMidi;
+
+  notesToPlay.forEach((m, idx)=>{
     const freq = midiToFreq(m);
     const noteGain = ctx.createGain();
 
@@ -1097,7 +1215,7 @@ async function exportAudio() {
   exportButton.disabled = true;
 
   // 1. Determine export duration
-  const renderDuration = exportBars * BEATS_PER_BAR * TIME_PER_BEAT;
+  const renderDuration = exportBars * STEPS_PER_BAR * TIME_PER_STEP;
   console.log(`Rendering audio for ${exportBars} bars (${renderDuration.toFixed(2)} seconds).`);
 
   // 2. Create OfflineAudioContext
@@ -1125,16 +1243,16 @@ async function exportAudio() {
   const simulatedNodes = JSON.parse(JSON.stringify(nodes)); // Deep copy nodes to simulate offline
   const simulatedPlayheads = JSON.parse(JSON.stringify(playheads)); // Deep copy playheads
 
-  let simulatedBeatTime = 0;
-  let simulatedCurrentBeat = 0;
+  let simulatedStepTime = 0;
+  let simulatedCurrentStep = 0;
 
   const dt = 0.01; // Simulation step time (e.g., 10ms)
   for (let t = 0; t < renderDuration; t += dt) {
     // Simulate drum sequencer
-    simulatedBeatTime += dt;
-    if (simulatedBeatTime >= TIME_PER_BEAT) {
-      simulatedBeatTime -= TIME_PER_BEAT;
-      simulatedCurrentBeat = (simulatedCurrentBeat + 1) % BEATS_PER_BAR;
+    simulatedStepTime += dt;
+    if (simulatedStepTime >= TIME_PER_STEP) {
+      simulatedStepTime -= TIME_PER_STEP;
+      simulatedCurrentStep = (simulatedCurrentStep + 1) % STEPS_PER_BAR;
       const scheduledTime = t;
 
     }
@@ -1279,10 +1397,10 @@ async function exportAudio() {
 
     // 3. Assign rhythmic positions to nodes on each ring
     const ringPatterns = [
-      { beats: 3, steps: BEATS_PER_BAR }, // Ring 1
-      { beats: 5, steps: BEATS_PER_BAR }, // Ring 2
-      { beats: 7, steps: BEATS_PER_BAR }, // Ring 3
-      { beats: 6, steps: BEATS_PER_BAR }, // Ring 4
+      { beats: 3, steps: STEPS_PER_BAR }, // Ring 1
+      { beats: 5, steps: STEPS_PER_BAR }, // Ring 2
+      { beats: 7, steps: STEPS_PER_BAR }, // Ring 3
+      { beats: 6, steps: STEPS_PER_BAR }, // Ring 4
     ];
 
     for(const [ring, ringNodes] of nodesByRing.entries()){
@@ -1345,12 +1463,26 @@ canvas.addEventListener('click', (e)=>{
   const speedSlider = document.getElementById('speedSlider');
   const chordVolumeSlider = document.getElementById('chordVolumeSlider');
   const exportBarsInput = document.getElementById('exportBarsInput');
+  const reverbSlider = document.getElementById('reverbSlider');
+  const compThresholdSlider = document.getElementById('compThresholdSlider');
+  const compRatioSlider = document.getElementById('compRatioSlider');
   const uiToggle = document.getElementById('uiToggle');
   const topbarEl = document.getElementById('topbar');
   const btnMusic = document.getElementById('toggleMusic');
+  const audioControls = document.querySelectorAll('.audio-control');
+
+  function setAudioControlsVisible(visible) {
+    for (const el of audioControls) {
+      el.style.display = visible ? 'flex' : 'none';
+    }
+  }
 
   btnMusic.addEventListener('click', ()=>{
     musicModeActive = !musicModeActive;
+    btnMusic.textContent = musicModeActive ? '🎵 Music: On' : '🎵 Music: Off';
+    btnMusic.setAttribute('aria-pressed', String(musicModeActive));
+    setAudioControlsVisible(musicModeActive);
+
     if (musicModeActive) {
       Audio.ensure();
       if (Audio.ctx.state === 'suspended') Audio.ctx.resume();
@@ -1359,9 +1491,10 @@ canvas.addEventListener('click', (e)=>{
     } else {
       clearTimeout(schedulerTimerId);
     }
-    btnMusic.textContent = musicModeActive ? '🎵 Music: On' : '🎵 Music: Off';
-    btnMusic.setAttribute('aria-pressed', String(musicModeActive));
   });
+
+  // Set initial visibility
+  setAudioControlsVisible(musicModeActive);
 
   uiToggle?.addEventListener('click', ()=>{
     const collapsed = topbarEl.classList.toggle('collapsed');
@@ -1397,6 +1530,61 @@ canvas.addEventListener('click', (e)=>{
     exportBars = val;
     e.target.value = val;
   });
+
+  reverbSlider?.addEventListener('input', (e)=> {
+    if (Audio.wetGain && Audio.dryGain) {
+      const mix = +e.target.value;
+      Audio.wetGain.gain.value = mix;
+      Audio.dryGain.gain.value = 1.0 - mix;
+    }
+  });
+
+  compThresholdSlider?.addEventListener('input', (e)=> {
+    if (Audio.compressor) {
+      Audio.compressor.threshold.value = +e.target.value;
+    }
+  });
+
+  compRatioSlider?.addEventListener('input', (e)=> {
+    if (Audio.compressor) {
+      Audio.compressor.ratio.value = +e.target.value;
+    }
+  });
+
+const btnPlay = document.getElementById('togglePlay');
+const bpmEl   = document.getElementById('bpm');
+const bpmVal  = document.getElementById('bpmVal');
+
+// === Harmony hold (bars per chord)
+const HARMONY_HOLDBARS = 4; // 기본: 4마디마다 화성 변경
+let phraseBar = 0;          // 0..HARMONY_HOLDBARS-1
+bpmEl?.addEventListener('input', ()=>{
+  BPM = parseInt(bpmEl.value,10)||100;
+  bpmVal.textContent = BPM;
+  // keep next deadline sensible when tempo changes
+  const now = performance.now();
+  const remain = Math.max(0, nextBarDue - now);
+  const newLen = BEATS_PER_BAR * MS_PER_BEAT();
+  nextBarDue = now + Math.min(remain, newLen);
+});
+function start(){
+  if (isPlaying) return;
+  isPlaying = true;
+  btnPlay?.setAttribute('aria-pressed','true'); btnPlay.textContent='Stop';
+
+  const now = performance.now();
+  nextBarDue = now + BEATS_PER_BAR * MS_PER_BEAT();
+
+  currentBar = 0;  // CHORD_TIMELINE 인덱스
+  phraseBar  = 0;  // 현재 화음에서 몇 번째 마디인지
+  applyChordToAll(CHORD_TIMELINE[currentBar]);
+}
+function stop(){
+  if(!isPlaying) return;
+  isPlaying = false;
+  btnPlay?.setAttribute('aria-pressed','false'); btnPlay.textContent='Play';
+}
+btnPlay?.addEventListener('click', ()=>{ isPlaying ? stop() : start(); });
 
 
 
