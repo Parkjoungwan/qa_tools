@@ -692,6 +692,96 @@ async function importJSONFile(file){
     return a + d * t;
   }
 
+  // === Rhythm shuffle helpers ===
+  function arrayShuffle(arr){
+    for(let i=arr.length-1;i>0;i--){ const j=(Math.random()*(i+1))|0; [arr[i],arr[j]]=[arr[j],arr[i]]; }
+    return arr;
+  }
+  function rotateArray(arr, k){
+    const n=arr.length; if(n===0) return arr;
+    const r=((k%n)+n)%n;
+    return arr.slice(r).concat(arr.slice(0,r));
+  }
+  function ringIndexOf(n){
+    // orbitTarget.ring이 있으면 우선, 없으면 n.ring
+    return (n?.orbitTarget?.ring ?? n.ring ?? 1);
+  }
+
+  // === Rhythm assignment state ===
+  const STEPS = 16;                                   // 16분 그리드
+  const RING_BEATS_CHOICES = [ [3,5,7], [5,7,3], [4,5,7], [3,7,5] ];
+  let   RING_BEATS = [3,5,7];                         // 현재 링별 비트 수
+  let   GRID_ROT   = [0,0,0];                         // 링별 위상 회전(0..15)
+  const STEP_ASSIGN = new Map();                      // nodeId -> step(0..15)
+
+  function recomputeRhythmAssignment(){
+    // 1) 링 비트 프리셋 선택 & 위상 회전
+    RING_BEATS = RING_BEATS_CHOICES[(Math.random()*RING_BEATS_CHOICES.length)|0];
+    GRID_ROT   = [ (Math.random()*STEPS)|0, (Math.random()*STEPS)|0, (Math.random()*STEPS)|0 ];
+
+    // 2) 링별 활성 스텝 수집
+    const activePerRing = RING_BEATS.map((beats)=>{
+      const pattern = getEuclideanRhythm(beats, STEPS);
+      const idxs=[]; for(let i=0;i<pattern.length;i++){ if(pattern[i]) idxs.push(i); }
+      return idxs;
+    });
+
+    // 3) 노드를 링별로 모으고, 매번 순서를 섞어 서로 다른 스텝에 배치
+    const ringBuckets=[[],[],[]];
+    for(let i=0;i<nodes.length;i++){
+      const r = ringIndexOf(nodes[i]);
+      if(r>0 && r<=3) ringBuckets[r-1].push(i); // 중심(r=0) 제외
+    }
+    for(let r=0;r<3;r++){
+      let steps = activePerRing[r].map(s => (s + GRID_ROT[r]) % STEPS);
+      // 확률적 쉼(0~30%)으로 일부 on-beat 제거
+      const omitProb = Math.random()*0.30;
+      steps = steps.filter(()=> Math.random()>omitProb);
+      if(steps.length===0) steps=[GRID_ROT[r]%STEPS]; // 완전 무음 방지
+      const nodesShuffled = arrayShuffle([...ringBuckets[r]]);
+      for(let k=0;k<nodesShuffled.length;k++){
+        const nid = nodesShuffled[k];
+        STEP_ASSIGN.set(nid, steps[k % steps.length]);
+      }
+    }
+  }
+
+  // === Apply rhythmic placement as shuffle tween ===
+  function applyRhythmShuffle(){
+    recomputeRhythmAssignment();
+    const R = computeContentRadius();
+    const D = 0.9; // 보간 시간
+
+    // 링/노드 재배치
+    for(let i=0;i<nodes.length;i++){
+      const n = nodes[i];
+      if (ringIndexOf(n)===0) continue; // 중심은 제외
+
+      // (A) 목표 각도: 스텝 중앙 + 지터(스텝 간격의 15%)
+      const step = STEP_ASSIGN.get(i) ?? ((Math.random()*STEPS)|0);
+      const stepAngle = TWO_PI / STEPS;
+      const jitter = (Math.random()*2-1) * (stepAngle*0.15);
+      const targetAngle = (step * stepAngle) + jitter;
+
+      // (B) Web 자유좌표도 시각 변화를 위해 함께 지터
+      const a = Math.random() * TWO_PI;
+      const rr = 40 + Math.random() * R;
+      const targetFX = Math.cos(a) * rr, targetFY = Math.sin(a) * rr;
+      const startFX = n.freeX,        startFY = n.freeY;
+
+      // (C) 기존 shuffle tween 구조 활용
+      n.shuffle = {
+        t: 0, dur: D,
+        startAngle: n.angle, targetAngle,
+        startFX, startFY, targetFX, targetFY,
+      };
+      n.vx=0; n.vy=0; n.offX=0; n.offY=0;
+    }
+    computeOrbitTargets(); // 링 재계산(중심 노드 변동 등) 후 화면 최소 스케일 재계산
+    startOrbitRelayout();
+    saveToSession();
+  }
+
   function scheduleNotes(start, end) {
     for (let t = start; t < end; t += TIME_PER_STEP) {
       const step = Math.floor(t / TIME_PER_STEP) % STEPS_PER_BAR;
@@ -1504,7 +1594,10 @@ canvas.addEventListener('click', (e)=>{
 
   btnLayout.addEventListener('click',()=>{ if(orbitTarget===1){ for(const n of nodes){ n.freeX=n.x; n.freeY=n.y; } orbitTarget=0; orbitActive=false; btnLayout.textContent='Layout: Web'; btnLayout.setAttribute('aria-pressed','false'); } else { for(const n of nodes){ n.pinned=false; } orbitTarget=1; orbitActive=true; btnLayout.textContent='Layout: Orbit'; btnLayout.setAttribute('aria-pressed','true'); } });
   btnEdges.addEventListener('click',()=>{ showEdges=!showEdges; btnEdges.textContent=showEdges?'Edges: On':'Edges: Off'; btnEdges.setAttribute('aria-pressed', showEdges?'true':'false'); });
-  btnShuffle.addEventListener('click', shufflePositions);
+  btnShuffle.addEventListener('click', ()=>{
+    try { assignNodeChords?.(); } catch(_e){}
+    applyRhythmShuffle();
+  });
   fabAdd.addEventListener('click', openAddNodeModal);
   btnSave.addEventListener('click', exportJSON);
   btnLoad.addEventListener('click', ()=> fileInput.click());
@@ -1624,6 +1717,9 @@ btnPlay?.addEventListener('click', ()=>{ isPlaying ? stop() : start(); });
   // ===== Start =====
   if (!loadFromSession()) {
     makeGraph();
+    // 첫 실행에서도 리듬 배치가 유효하도록
+    try { assignNodeChords?.(); } catch(_e){}
+    applyRhythmShuffle();
   }
   devTests();
   requestAnimationFrame(loop);
