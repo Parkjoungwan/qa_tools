@@ -18,6 +18,7 @@
     #topbar.collapsed{max-height:0;opacity:0;pointer-events:none;margin-top:0}
     #topbar button{background:rgba(124,192,255,.12);color:var(--fg);border:1px solid rgba(124,192,255,.25);border-radius:10px;padding:6px 10px;font-size:12px;cursor:pointer}
     #topbar button:hover{background:rgba(124,192,255,.22)}
+    .slider-container{display:flex;align-items:center;gap:6px;font-size:12px;padding:0 4px}
     /* Floating Add button */
     .fab{position:fixed;right:18px;bottom:18px;z-index:10;width:44px;height:44px;border-radius:999px;border:1px solid rgba(124,192,255,.35);background:rgba(124,192,255,.14);color:var(--fg);font-size:22px;line-height:42px;text-align:center;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.24)}
     .fab:hover{background:rgba(124,192,255,.24)}
@@ -64,8 +65,13 @@
       <button id="toggleLayout" aria-pressed="true">Layout: Orbit</button>
       <button id="toggleEdges" aria-pressed="true">Edges: On</button>
       <button id="shuffle">Shuffle</button>
+      <button id="toggleMusic" aria-pressed="true">🎵 Music: On</button>
       <button id="saveJSON">extract</button>
       <button id="loadJSON">import</button>
+      <div class="slider-container">
+        <label for="speedSlider">Speed</label>
+        <input type="range" id="speedSlider" min="0.1" max="3.0" step="0.05" value="1.0" />
+      </div>
       <input type="file" id="fileInput" style="display:none" accept="application/json" />
     </div>
   </div>
@@ -128,10 +134,72 @@
 
   // ===== State =====
   const SESSION_KEY = 'graphState.v1';
-  let nodes=[], edges=[]; let showEdges=true; let nextId=0;
+  let nodes=[], edges=[]; let showEdges=true;
+
+// ===== Audio (Web Audio API) =====
+const Audio = {
+  ctx: null,
+  master: null,
+  ensure(){
+    if(this.ctx) return;
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    const master = ctx.createGain(); master.gain.value = 0.12; master.connect(ctx.destination);
+    this.ctx = ctx; this.master = master;
+  }
+};
+function midiToFreq(m){ return 440 * Math.pow(2, (m-69)/12); }
+const CHORD_TEMPLATES = {
+  'maj':  {name:'maj',  iv:[0,4,7]},
+  'min':  {name:'min',  iv:[0,3,7]},
+  'sus2': {name:'sus2', iv:[0,2,7]},
+  'sus4': {name:'sus4', iv:[0,5,7]},
+  '5':    {name:'5',    iv:[0,7,12]},
+  'maj7': {name:'maj7', iv:[0,4,7,11]},
+  'm7':   {name:'m7',   iv:[0,3,7,10]},
+  '7':    {name:'7',    iv:[0,4,7,10]},
+  'm7b5': {name:'m7b5', iv:[0,3,6,10]},
+};
+
+const SCALES = {
+  major: {
+    intervals: [0, 2, 4, 5, 7, 9, 11],
+    chords: ['maj7', 'm7', 'm7', 'maj7', '7', 'm7', 'm7b5']
+  },
+  // Could add more scales like minor, dorian, etc. later
+};
+
+function assignNodeChords() {
+  // 1. Establish a musical key
+  const rootNote = 48 + Math.floor(Math.random() * 12); // C3 to B3
+  const scale = SCALES.major; // For now, always use major scale
+
+  // 2. Generate a palette of diatonic chords
+  const chordPalette = [];
+  for (let i = 0; i < scale.intervals.length; i++) {
+    const chordRoot = rootNote + scale.intervals[i];
+    const chordType = CHORD_TEMPLATES[scale.chords[i]];
+    if (!chordType) continue;
+
+    chordPalette.push({
+      name: chordType.name,
+      midi: chordType.iv.map(iv => chordRoot + iv)
+    });
+  }
+
+  // 3. Assign a chord from the palette to each node
+  if (chordPalette.length === 0) return;
+  for (const n of nodes) {
+    const chosenChord = chordPalette[Math.floor(Math.random() * chordPalette.length)];
+    n.chordName = chosenChord.name;
+    n.chordMidi = chosenChord.midi;
+  }
+} let nextId=0;
   let orbitMix=1, orbitTarget=1, orbitActive=true; // 0=Web, 1=Orbit
+  let musicModeActive = true;
+  let globalSpeedMultiplier = 1.0;
 
   let dragging=false, dragIndex=-1; // node-drag state
+  let draggingPlayheadId = -1;
   let dragAdj = null; // neighbors of dragged node for focus/dim
   let pointerWX=0, pointerWY=0, dragOffX=0, dragOffY=0;
   let dragLastWX=0, dragLastWY=0, dragLastT=0;
@@ -143,6 +211,14 @@
 
   // hover state
   let hoverIndex=-1, mouseSX=0, mouseSY=0, mouseIn=false;
+
+  // Drum machine state
+  let kickPattern = [], hatPattern = [];
+  let currentBeat = 0, beatTime = 0;
+  let playheads = [{ id: 0, angle: Math.PI / 2 }];
+  const BEATS_PER_BAR = 16;
+  const TEMPO = 120; // beats per minute
+  const TIME_PER_BEAT = 60 / TEMPO / (BEATS_PER_BAR / 4); // Time per 16th note
 
   function resize(){canvas.width=innerWidth*DPR;canvas.height=innerHeight*DPR;ctx.setTransform(DPR,0,0,DPR,0,0); updateMinScale();} resize(); window.addEventListener('resize',resize);
 
@@ -164,6 +240,11 @@
       this.fade=1;                  // edge/node alpha during anim
       // UI focus state
       this.uiScale=1; this.uiTint=0;
+      // music: chord data is now assigned by assignNodeChords()
+      this.chordName = '';
+      this.chordMidi = [];
+      this.hasPlayedThisFrame = false;
+      this._pop = 0; // visual pop on click
       // metadata
       this.createdAt=null;
       this.memo="";
@@ -200,7 +281,7 @@
         const ring=d2ring.get(deg[i]) || (uniqueDegs.length+1);
         const baseR=R_BASE+(ring-1)*R_STEP;
         const radius=baseR+n.jitter;
-        const omega=SPEED_BASE*Math.pow(SPEED_FALLOFF, ring-1)*((ring%2===0)?1:-1);
+        const omega=globalSpeedMultiplier * SPEED_BASE*Math.pow(SPEED_FALLOFF, ring-1)*((ring%2===0)?1:-1);
         n.orbitTarget={ring, radius, omega};
       }
     }
@@ -236,6 +317,7 @@
     // 초기 타깃 계산 후 즉시 적용
     computeOrbitTargets();
     applyOrbitTargetsInstant();
+    assignNodeChords();
     for(const n of nodes){ const ox=Math.cos(n.angle)*n.radius, oy=Math.sin(n.angle)*n.radius; n.x=ox; n.y=oy; n.freeX=ox; n.freeY=oy; n.vx=0; n.vy=0; n.offX=0; n.offY=0; n.pinned=false; n.animMode=null; n.fade=1; n.scaleX=1; n.scaleY=1; }
     nextId = nodes.length; updateMinScale();
   }
@@ -368,27 +450,81 @@ async function importJSONFile(file){
   // ===== Interaction =====
   function pickNode(sx,sy){ let best=-1,bd=1e9; for(let i=0;i<nodes.length;i++){ const n=nodes[i]; const p=worldToScreen(n.x,n.y); const dx=sx-p.x, dy=sy-p.y; const d2=dx*dx+dy*dy; const r=Math.max(10,(n.size+6)*camScale*0.9); if(d2<r*r && d2<bd){ best=i; bd=d2; } } return best; }
 
-  function onDown(e){ const sx=e.clientX, sy=e.clientY; const i=pickNode(sx,sy);
-    if(i<0){ // start panning background
-      isPanning=true; dragging=false; dragIndex=-1; canvas.classList.add('drag');
-      panStartSX=sx; panStartSY=sy; panCamX0=camX; panCamY0=camY; panLastSX=sx; panLastSY=sy; panLastT=performance.now(); panVelX=0; panVelY=0; return; }
+  function onDown(e){
+    if (e.button !== 0) return; // Only handle left-clicks
+    const sx=e.clientX, sy=e.clientY;
+    const i=pickNode(sx,sy);
+
+    if(i<0){ // Not a node click
+      // Add playhead on Shift+Click
+      if (e.shiftKey) {
+        const w = screenToWorld(sx, sy);
+        const angle = Math.atan2(w.y, w.x);
+        playheads.push({ id: Date.now(), angle: (angle + TWO_PI) % TWO_PI });
+        return;
+      }
+
+      // Check for playhead drag
+      const w = screenToWorld(sx, sy);
+      const angle = (Math.atan2(w.y, w.x) + TWO_PI) % TWO_PI;
+      const threshold = 0.25;
+      let closest = -1, minDist = 1e9;
+      for (const ph of playheads) {
+        let dist = Math.abs(angle - ph.angle);
+        if (dist > Math.PI) dist = TWO_PI - dist;
+        if (dist < threshold && dist < minDist) {
+          minDist = dist;
+          closest = ph.id;
+        }
+      }
+
+      if (closest !== -1) {
+        draggingPlayheadId = closest;
+        canvas.classList.add('drag');
+        return;
+      }
+
+      // start panning background
+      isPanning=true; dragging=false; dragIndex=-1; draggingPlayheadId = -1; canvas.classList.add('drag');
+      panStartSX=sx; panStartSY=sy; panCamX0=camX; panCamY0=camY; panLastSX=sx; panLastSY=sy; panLastT=performance.now(); panVelX=0; panVelY=0; return;
+    }
+
+    // It's a node click
     dragging = true;
     dragIndex = i;
-    dragAdj = neighborsOf(i); // <-- add
+    dragAdj = neighborsOf(i);
     canvas.classList.add('drag');
-    const n=nodes[i]; const w=screenToWorld(sx,sy); pointerWX=w.x; pointerWY=w.y; dragOffX=w.x-n.x; dragOffY=w.y-n.y; }
+    const n=nodes[i]; const w=screenToWorld(sx,sy); pointerWX=w.x; pointerWY=w.y; dragOffX=w.x-n.x; dragOffY=w.y-n.y;
+  }
 
-  function onMove(e){ const sx=e.clientX, sy=e.clientY; mouseSX=sx; mouseSY=sy; mouseIn=true; hoverIndex=pickNode(sx,sy);
+  function onMove(e){
+    const sx=e.clientX, sy=e.clientY;
+    mouseSX=sx; mouseSY=sy; mouseIn=true;
+    hoverIndex=pickNode(sx,sy);
+
+    // Dragging a playhead
+    if (draggingPlayheadId !== -1) {
+      const w = screenToWorld(sx, sy);
+      const angle = (Math.atan2(w.y, w.x) + TWO_PI) % TWO_PI;
+      const ph = playheads.find(p => p.id === draggingPlayheadId);
+      if (ph) {
+        ph.angle = angle;
+      }
+      return;
+    }
+
     if(isPanning){ const now=performance.now(); camX=panCamX0-(sx-panStartSX)/camScale; camY=panCamY0-(sy-panStartSY)/camScale; const dt=Math.max(1e-3,(now-panLastT)/1000); panVelX=-((sx-panLastSX)/camScale)/dt; panVelY=-((sy-panLastSY)/camScale)/dt; panLastSX=sx; panLastSY=sy; panLastT=now; camTX=camX; camTY=camY; camVX=0; camVY=0; return; }
     if(!dragging) return;
-    // 저장: 이전 샘플
+
+    // Dragging a node
     dragLastWX = pointerWX;
     dragLastWY = pointerWY;
     dragLastT  = performance.now();
 
     const w=screenToWorld(sx,sy); pointerWX=w.x; pointerWY=w.y; const n=nodes[dragIndex];
     if(orbitMix>0.5){ const ox=Math.cos(n.angle)*n.radius, oy=Math.sin(n.angle)*n.radius; n.offX=w.x-ox; n.offY=w.y-oy; }
-    else { n.freeX=w.x-dragOffX; n.freeY=w.y-dragOffY; n.pinned=true; } }
+    else { n.freeX=w.x-dragOffX; n.freeY=w.y-dragOffY; n.pinned=true; }
+  }
 
   function onUp(){
     if (dragging && dragIndex >= 0 && orbitMix <= 0.5) {
@@ -397,16 +533,18 @@ async function importJSONFile(file){
       const dt  = Math.max(1e-3, (now - (dragLastT || now)) / 1000);
       const vx  = (pointerWX - dragLastWX) / dt;
       const vy  = (pointerWY - dragLastWY) / dt;
-      // 감쇠를 고려해 너무 과하지 않게 스케일
       n.vx += vx * 0.65;
       n.vy += vy * 0.65;
     }
     if(isPanning){ camTX=0; camTY=0; camVX=panVelX; camVY=panVelY; wobbleVX+=panVelX*WOB_GAIN; wobbleVY+=panVelY*WOB_GAIN; }
+
     isPanning = false;
     dragging = false;
     dragIndex = -1;
-    dragAdj = null; // <-- add
-    canvas.classList.remove('drag'); }
+    dragAdj = null;
+    draggingPlayheadId = -1; // Reset playhead drag
+    canvas.classList.remove('drag');
+  }
 
   canvas.addEventListener('mousedown',onDown); window.addEventListener('mousemove',onMove); window.addEventListener('mouseup',onUp); canvas.addEventListener('contextmenu',onContextMenu); canvas.addEventListener('mouseleave',()=>{ mouseIn=false; hoverIndex=-1; });
 
@@ -424,6 +562,17 @@ async function importJSONFile(file){
   }
 
   function step(dt){
+    // --- Drum Sequencer ---
+    if (musicModeActive && orbitActive) {
+      beatTime += dt;
+      if (beatTime >= TIME_PER_BEAT) {
+        beatTime -= TIME_PER_BEAT;
+        currentBeat = (currentBeat + 1) % BEATS_PER_BAR;
+        if (kickPattern && kickPattern[currentBeat] === 1) playKick();
+        if (hatPattern && hatPattern[currentBeat] === 1) playHat();
+      }
+    }
+
     // layout tween
     if(Math.abs(orbitMix-orbitTarget)>1e-4){ const dir=Math.sign(orbitTarget-orbitMix); orbitMix=Math.min(1,Math.max(0,orbitMix+dir*ORBIT_TWEEN*dt)); orbitActive=(orbitMix===1)?true:(orbitMix===0?false:orbitActive); }
 
@@ -516,13 +665,46 @@ async function importJSONFile(file){
       }
 
       const k = Math.min(1, HOVER_SPEED * dt);    // 기존 파일에 정의됨 (10)
+      // musical click pop easing
+      if(n._pop>0){ n._pop = Math.max(0, n._pop - dt*3.0); tintTarget += 0.25*n._pop; scaleTarget += 0.20*n._pop; }
       n.uiScale += (scaleTarget - n.uiScale) * k;
       n.uiTint  += (tintTarget - n.uiTint)  * k;
     }
 
     // orbit advance & drag-offset decay
-    for(const n of nodes){ if(orbitActive && !(dragging && orbitMix>0.5 && nodes[dragIndex]===n)) n.angle+=n.omega*dt; }
-    if(orbitMix>0.5){ for(const n of nodes){ if(!(dragging && nodes[dragIndex]===n)) { n.offX*=ORBIT_DRAG_DECAY; n.offY*=ORBIT_DRAG_DECAY; } } } else { for(const n of nodes){ n.offX=0; n.offY=0; } }
+    for(const n of nodes){
+      n.hasPlayedThisFrame = false; // Reset playhead collision flag
+
+      // --- Angle update and playhead collision ---
+      if(orbitActive && !(dragging && orbitMix>0.5 && nodes[dragIndex]===n)) {
+        const oldAngle = (n.angle % TWO_PI + TWO_PI) % TWO_PI;
+        n.angle += n.omega * dt;
+        const newAngle = (n.angle % TWO_PI + TWO_PI) % TWO_PI;
+
+        if (musicModeActive && !n.hasPlayedThisFrame) {
+          for (const ph of playheads) {
+            const crossed = (n.omega > 0 && oldAngle < ph.angle && newAngle >= ph.angle) ||
+                            (n.omega < 0 && oldAngle > ph.angle && newAngle <= ph.angle);
+            if (crossed) {
+              playChord(n);
+              n._pop = 1.0;
+              n.hasPlayedThisFrame = true; // Prevent re-triggering on other playheads in same frame
+              break; // Exit inner loop once played
+            }
+          }
+        }
+      }
+      // --- Drag offset decay ---
+      if(orbitMix > 0.5) {
+        if(!(dragging && nodes[dragIndex]===n)) {
+          n.offX *= ORBIT_DRAG_DECAY;
+          n.offY *= ORBIT_DRAG_DECAY;
+        }
+      } else {
+        n.offX = 0;
+        n.offY = 0;
+      }
+    }
 
     // blended output
     for(const n of nodes){ const ox=Math.cos(n.angle)*n.radius, oy=Math.sin(n.angle)*n.radius; const orbitX=ox+n.offX, orbitY=oy+n.offY; const webX=n.freeX, webY=n.freeY; const rx = webX*(1-orbitMix)+orbitX*orbitMix; const ry = webY*(1-orbitMix)+orbitY*orbitMix; if(!n.animMode){ n.x = rx; n.y = ry; } }
@@ -541,6 +723,23 @@ async function importJSONFile(file){
     // orbit rings — 부드러운 등장/사라짐
     const baseAlpha = 0.18*orbitMix;
     if(ringTransition){ const s=easeInOut(ringTransition.t); ctx.lineWidth=1/camScale; for(const r of ringTransition.prev){ const rad=R_BASE+(r-1)*R_STEP; ctx.strokeStyle=`rgba(124,192,255,${(baseAlpha*(1-s)).toFixed(3)})`; ctx.beginPath(); ctx.arc(0,0,rad,0,Math.PI*2); ctx.stroke(); } for(const r of ringTransition.next){ const rad=R_BASE+(r-1)*R_STEP; ctx.strokeStyle=`rgba(124,192,255,${(baseAlpha*s).toFixed(3)})`; ctx.beginPath(); ctx.arc(0,0,rad,0,Math.PI*2); ctx.stroke(); } } else if(orbitMix>0) { const used=new Set(nodes.filter(n=>n.ring>0).map(n=>n.ring)); ctx.lineWidth=1/camScale; ctx.strokeStyle=`rgba(124,192,255,${baseAlpha.toFixed(3)})`; for(const r of Array.from(used).sort((a,b)=>a-b)){ const rad=R_BASE+(r-1)*R_STEP; ctx.beginPath(); ctx.arc(0,0,rad,0,Math.PI*2); ctx.stroke(); } }
+
+    // Playhead lines
+    if (musicModeActive && orbitMix > 0.2) {
+      const r = computeContentRadius();
+      ctx.save();
+      ctx.lineWidth = 1.5 / camScale;
+      ctx.setLineDash([4 / camScale, 7 / camScale]);
+
+      for (const ph of playheads) {
+        ctx.strokeStyle = `rgba(255, 255, 255, ${0.3 * orbitMix * orbitMix})`;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(r * Math.cos(ph.angle), r * Math.sin(ph.angle));
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
 
     // edges
     if(showEdges){ ctx.lineWidth=1.1/camScale; for(const e of edges){ const a=nodes[e.a], b=nodes[e.b]; let alpha=Math.min(a?.fade??1,b?.fade??1)*0.35; if (dragging && dragIndex >= 0) { const hit = (e.a === dragIndex || e.b === dragIndex); alpha = hit ? 0.70 : 0.10; } if(!a||!b||alpha<=0) continue; ctx.strokeStyle=`rgba(124,192,255,${alpha.toFixed(3)})`; ctx.beginPath(); ctx.moveTo(a.x,a.y); ctx.lineTo(b.x,b.y); ctx.stroke(); } }
@@ -673,6 +872,112 @@ function roundRect(c, x, y, w, h, r){
   // ===== Loop =====
   let last=performance.now(); function loop(now){ const dt=Math.min(0.05,(now-last)/1000); last=now; step(dt); draw(); requestAnimationFrame(loop); }
 
+// ===== Music playback =====
+function playChord(node){
+  Audio.ensure();
+  if(Audio.ctx.state==='suspended') Audio.ctx.resume(); // for mobile
+  const t0 = Audio.ctx.currentTime;
+  const dur = 1.2; // longer duration for a more resonant feel
+
+  // Harmonics definition: [amplitude, type]
+  const harmonics = [
+    [0.6, 'triangle'], // Fundamental
+    [0.4, 'sine'],     // 2nd harmonic (octave)
+    [0.2, 'sine'],     // 3rd harmonic (octave + fifth)
+    [0.1, 'sine']      // 4th harmonic (2 octaves)
+  ];
+  const detunes = [-5, 0, 4]; // Richer detuning
+
+  node.chordMidi.forEach((m, idx)=>{
+    const freq = midiToFreq(m);
+    const noteGain = Audio.ctx.createGain();
+
+    // A more piano-like ADSR Envelope for the entire note
+    const g = noteGain.gain;
+    g.setValueAtTime(0.0001, t0);
+    g.linearRampToValueAtTime(0.7, t0 + 0.02); // Quick attack
+    g.exponentialRampToValueAtTime(0.15, t0 + dur * 0.6); // Decay
+    g.linearRampToValueAtTime(0.0001, t0 + dur); // Release
+
+    harmonics.forEach((h, i) => {
+      const osc = Audio.ctx.createOscillator();
+      osc.type = h[1];
+      osc.frequency.value = freq * (i + 1);
+
+      // Apply small detune to chord notes for richness
+      if(idx < detunes.length) osc.detune.value = detunes[idx] + i*2;
+
+      // Create a gain node for this specific harmonic to control its volume
+      const partialGain = Audio.ctx.createGain();
+      partialGain.gain.value = h[0];
+
+      osc.connect(partialGain);
+      partialGain.connect(noteGain);
+
+      osc.start(t0);
+      osc.stop(t0 + dur + 0.1);
+    });
+
+    noteGain.connect(Audio.master);
+  });
+}
+
+function playKick(){
+  Audio.ensure();
+  if(Audio.ctx.state==='suspended') Audio.ctx.resume();
+  const t0 = Audio.ctx.currentTime;
+  const osc = Audio.ctx.createOscillator();
+  const gain = Audio.ctx.createGain();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(150, t0);
+  osc.frequency.exponentialRampToValueAtTime(0.01, t0 + 0.1);
+  gain.gain.setValueAtTime(0.8, t0); // Quieter kick
+  gain.gain.exponentialRampToValueAtTime(0.01, t0 + 0.1);
+  osc.connect(gain);
+  gain.connect(Audio.master);
+  osc.start(t0);
+  osc.stop(t0 + 0.12);
+}
+
+function playHat(){
+  Audio.ensure();
+  if(Audio.ctx.state==='suspended') Audio.ctx.resume();
+  const t0 = Audio.ctx.currentTime;
+  const bufferSize = Audio.ctx.sampleRate * 0.05; // Shorter
+  const buffer = Audio.ctx.createBuffer(1, bufferSize, Audio.ctx.sampleRate);
+  const output = buffer.getChannelData(0);
+  for (let i = 0; i < bufferSize; i++) {
+    output[i] = (Math.random() * 2 - 1) * 0.3; // Quieter
+  }
+  const noise = Audio.ctx.createBufferSource();
+  noise.buffer = buffer;
+  const bandpass = Audio.ctx.createBiquadFilter();
+  bandpass.type = 'bandpass';
+  bandpass.frequency.value = 12000;
+  const highpass = Audio.ctx.createBiquadFilter();
+  highpass.type = 'highpass';
+  highpass.frequency.value = 9000;
+  const gain = Audio.ctx.createGain();
+  gain.gain.setValueAtTime(0.4, t0); // Quieter
+  gain.gain.exponentialRampToValueAtTime(0.01, t0 + 0.03);
+  noise.connect(bandpass);
+  bandpass.connect(highpass);
+  highpass.connect(gain);
+  gain.connect(Audio.master);
+  noise.start(t0);
+  noise.stop(t0 + 0.04);
+}
+
+// Bjorklund's algorithm for Euclidean rhythms
+function getEuclideanRhythm(beats, steps) {
+    if (beats < 0 || steps < 0 || beats > steps) return [];
+    const pattern = [];
+    for (let i = 0; i < steps; i++) {
+        pattern.push(Math.floor(i * beats / steps) !== Math.floor((i - 1) * beats / steps) ? 1 : 0);
+    }
+    return pattern;
+}
+
   // ===== Add/Delete (animated) =====
   function screenSize(){ return {W: canvas.width/DPR, H: canvas.height/DPR}; }
   function pickNearestEdgeScreen(x,y){ const {W,H}=screenSize(); const dLeft=x, dRight=W-x, dTop=y, dBottom=H-y; const min=Math.min(dLeft,dRight,dTop,dBottom); if(min===dLeft) return {side:'left', tx:-40, ty:y}; if(min===dRight) return {side:'right', tx:W+40, ty:y}; if(min===dTop) return {side:'top', tx:x, ty:-40}; return {side:'bottom', tx:x, ty:H+40}; }
@@ -707,7 +1012,33 @@ function roundRect(c, x, y, w, h, r){
     }
   }
 
-  function onContextMenu(e){ e.preventDefault(); if(showingConfirm) return; const sx=e.clientX, sy=e.clientY; const i=pickNode(sx,sy); if(i<0) return; pendingDeleteIndex=i; openConfirm(); }
+  function onContextMenu(e){
+    e.preventDefault();
+    if(showingConfirm) return;
+    const sx=e.clientX, sy=e.clientY;
+
+    // Delete playhead on Shift+Right-click
+    if (e.shiftKey) {
+      const w = screenToWorld(sx, sy);
+      const angle = (Math.atan2(w.y, w.x) + TWO_PI) % TWO_PI;
+      const threshold = 0.25; // Angular threshold for deletion
+      let closest = -1, minDist = 1e9;
+      for (let i = 0; i < playheads.length; i++) {
+        let dist = Math.abs(angle - playheads[i].angle);
+        if (dist > Math.PI) dist = TWO_PI - dist; // Handle wrap-around distance
+        if (dist < threshold && dist < minDist) {
+          minDist = dist;
+          closest = i;
+        }
+      }
+      if (closest !== -1) {
+        playheads.splice(closest, 1);
+      }
+      return;
+    }
+
+    const i=pickNode(sx,sy); if(i<0) return; pendingDeleteIndex=i; openConfirm();
+  }
 
   // ===== Confirm Modal Logic =====
   let pendingDeleteIndex=-1, showingConfirm=false;
@@ -767,34 +1098,76 @@ function roundRect(c, x, y, w, h, r){
   });
 
   function shufflePositions(){
+    assignNodeChords(); // Generate new harmony first
+
     const R = computeContentRadius();
     const D = 0.9; // duration seconds
 
-    for (const n of nodes) {
-      // orbit: 새 목표 각도(보간으로 이동)
-      const targetAngle = Math.random() * Math.PI * 2;
-      const startAngle  = n.angle;
+    // 1. Create drum patterns
+    kickPattern = getEuclideanRhythm(4, BEATS_PER_BAR); // Four-on-the-floor
+    hatPattern = getEuclideanRhythm(8, BEATS_PER_BAR);  // 8th notes
 
-      // web: 새 목표 위치(보간으로 이동)
-      const a = Math.random() * Math.PI * 2;
-      const rr = 40 + Math.random() * R;
-      const targetFX = Math.cos(a) * rr, targetFY = Math.sin(a) * rr;
-      const startFX = n.freeX,        startFY = n.freeY;
+    // 2. Group nodes by ring
+    const nodesByRing = new Map();
+    for(const n of nodes){
+      const ring = n.orbitTarget.ring; // Use target ring for consistency
+      if(!nodesByRing.has(ring)) nodesByRing.set(ring, []);
+      nodesByRing.get(ring).push(n);
+    }
 
-      n.shuffle = {
-        t: 0, dur: D,
-        startAngle, targetAngle,
-        startFX, startFY, targetFX, targetFY,
-      };
+    // 3. Assign rhythmic positions to nodes on each ring
+    const ringPatterns = [
+      { beats: 3, steps: BEATS_PER_BAR }, // Ring 1
+      { beats: 5, steps: BEATS_PER_BAR }, // Ring 2
+      { beats: 7, steps: BEATS_PER_BAR }, // Ring 3
+      { beats: 6, steps: BEATS_PER_BAR }, // Ring 4
+    ];
 
-      // 물리 영향 제거
-      n.vx = 0; n.vy = 0;
-      n.offX = 0; n.offY = 0;
+    for(const [ring, ringNodes] of nodesByRing.entries()){
+      if(ring === 0) continue; // Skip center node
+
+      const patternDef = ringPatterns[(ring - 1) % ringPatterns.length];
+      const nodePattern = getEuclideanRhythm(patternDef.beats, patternDef.steps);
+      const onBeatIndices = [];
+      nodePattern.forEach((v, i) => { if(v === 1) onBeatIndices.push(i); });
+
+      if(onBeatIndices.length === 0) continue;
+
+      ringNodes.forEach((n, i) => {
+        const beatIndex = onBeatIndices[i % onBeatIndices.length];
+        const targetAngle = (beatIndex / patternDef.steps) * TWO_PI;
+
+        // --- Standard shuffle logic ---
+        const startAngle  = n.angle;
+        const a = Math.random() * Math.PI * 2;
+        const rr = 40 + Math.random() * R;
+        const targetFX = Math.cos(a) * rr, targetFY = Math.sin(a) * rr;
+        const startFX = n.freeX,        startFY = n.freeY;
+
+        n.shuffle = {
+          t: 0, dur: D,
+          startAngle, targetAngle,
+          startFX, startFY, targetFX, targetFY,
+        };
+
+        n.vx = 0; n.vy = 0;
+        n.offX = 0; n.offY = 0;
+      });
     }
 
     computeOrbitTargets();
     saveToSession();
   }
+
+// === Interaction: click to play chord ===
+canvas.addEventListener('click', (e)=>{
+  const i = pickNode(e.clientX, e.clientY);
+  if(i>=0){
+    const n = nodes[i];
+    n._pop = 1.0;       // visual feedback
+    playChord(n);       // play chord
+  }
+});
 
   // ===== UI =====
   const btnLayout=document.getElementById('toggleLayout');
@@ -804,8 +1177,16 @@ function roundRect(c, x, y, w, h, r){
   const btnSave = document.getElementById('saveJSON');
   const btnLoad = document.getElementById('loadJSON');
   const fileInput = document.getElementById('fileInput');
+  const speedSlider = document.getElementById('speedSlider');
   const uiToggle = document.getElementById('uiToggle');
   const topbarEl = document.getElementById('topbar');
+  const btnMusic = document.getElementById('toggleMusic');
+
+  btnMusic.addEventListener('click', ()=>{
+    musicModeActive = !musicModeActive;
+    btnMusic.textContent = musicModeActive ? '🎵 Music: On' : '🎵 Music: Off';
+    btnMusic.setAttribute('aria-pressed', String(musicModeActive));
+  });
 
   uiToggle?.addEventListener('click', ()=>{
     const collapsed = topbarEl.classList.toggle('collapsed');
@@ -820,6 +1201,12 @@ function roundRect(c, x, y, w, h, r){
   btnSave.addEventListener('click', exportJSON);
   btnLoad.addEventListener('click', ()=> fileInput.click());
   fileInput.addEventListener('change', (e)=> importJSONFile(e.target.files[0]));
+
+  speedSlider.addEventListener('input', (e)=>{
+    globalSpeedMultiplier = +e.target.value;
+    // Recalculate orbit targets with new speed
+    startOrbitRelayout();
+  });
 
 
 
