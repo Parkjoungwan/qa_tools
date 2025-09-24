@@ -60,17 +60,22 @@
 </head>
 <body>
   <div id="uiPanel">
-    <button id="uiToggle" aria-expanded="true" title="접기/펼치기">▲ UI</button>
+    <button id="uiToggle" aria-expanded="true" title="접기/펼치기">▲ Tool</button>
     <div id="topbar">
       <button id="toggleLayout" aria-pressed="true">Layout: Orbit</button>
       <button id="toggleEdges" aria-pressed="true">Edges: On</button>
       <button id="shuffle">Shuffle</button>
-      <button id="toggleMusic" aria-pressed="true">🎵 Music: On</button>
+      <button id="toggleMusic" aria-pressed="false">🎵 Music: Off</button>
       <button id="saveJSON">extract</button>
       <button id="loadJSON">import</button>
+      <button id="exportWav">Export WAV</button>
       <div class="slider-container">
         <label for="speedSlider">Speed</label>
         <input type="range" id="speedSlider" min="0.1" max="3.0" step="0.05" value="1.0" />
+      </div>
+      <div class="slider-container">
+        <label for="exportBarsInput">Bars</label>
+        <input type="number" id="exportBarsInput" min="1" max="64" value="4" />
       </div>
       <input type="file" id="fileInput" style="display:none" accept="application/json" />
     </div>
@@ -140,11 +145,51 @@
 const Audio = {
   ctx: null,
   master: null,
+  reverb: null,
+  compressor: null,
   ensure(){
     if(this.ctx) return;
     const ctx = new (window.AudioContext||window.webkitAudioContext)();
-    const master = ctx.createGain(); master.gain.value = 0.12; master.connect(ctx.destination);
-    this.ctx = ctx; this.master = master;
+
+    // Create master gain
+    const master = ctx.createGain(); master.gain.value = 0.15; // Adjusted master volume
+
+    // Create Reverb (ConvolverNode)
+    const reverb = ctx.createConvolver();
+    const impulse = this.createImpulseResponse(ctx);
+    reverb.buffer = impulse;
+
+    // Create Compressor
+    const compressor = ctx.createDynamicsCompressor();
+    compressor.threshold.value = -18;
+    compressor.knee.value = 20;
+    compressor.ratio.value = 12;
+    compressor.attack.value = 0.005;
+    compressor.release.value = 0.15;
+
+    // Connect the chain: master -> reverb -> compressor -> destination
+    master.connect(reverb);
+    reverb.connect(compressor);
+    compressor.connect(ctx.destination);
+
+    this.ctx = ctx; 
+    this.master = master;
+    this.reverb = reverb;
+    this.compressor = compressor;
+  },
+
+  createImpulseResponse(ctx) {
+    const dur = 1.5; // seconds
+    const decay = 4.0;
+    const len = ctx.sampleRate * dur;
+    const impulse = ctx.createBuffer(2, len, ctx.sampleRate);
+    for (let c = 0; c < 2; c++) { // Stereo
+      const channel = impulse.getChannelData(c);
+      for (let i = 0; i < len; i++) {
+        channel[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, decay);
+      }
+    }
+    return impulse;
   }
 };
 function midiToFreq(m){ return 440 * Math.pow(2, (m-69)/12); }
@@ -195,8 +240,15 @@ function assignNodeChords() {
   }
 } let nextId=0;
   let orbitMix=1, orbitTarget=1, orbitActive=true; // 0=Web, 1=Orbit
-  let musicModeActive = true;
+  let musicModeActive = false;
   let globalSpeedMultiplier = 1.0;
+  let isRendering = false;
+
+  // Audio Scheduler state
+  let nextNoteTime = 0.0;
+  const schedulerLookahead = 25.0; // ms
+  const schedulerInterval = 100.0; // ms
+  let schedulerTimerId = 0;
 
   let dragging=false, dragIndex=-1; // node-drag state
   let draggingPlayheadId = -1;
@@ -215,10 +267,12 @@ function assignNodeChords() {
   // Drum machine state
   let kickPattern = [], hatPattern = [];
   let currentBeat = 0, beatTime = 0;
+  let exportBars = 4;
   let playheads = [{ id: 0, angle: Math.PI / 2 }];
   const BEATS_PER_BAR = 16;
   const TEMPO = 120; // beats per minute
   const TIME_PER_BEAT = 60 / TEMPO / (BEATS_PER_BAR / 4); // Time per 16th note
+  const MICROTIMING_MAX_OFFSET = 0.015; // +/- 15ms for humanization
 
   function resize(){canvas.width=innerWidth*DPR;canvas.height=innerHeight*DPR;ctx.setTransform(DPR,0,0,DPR,0,0); updateMinScale();} resize(); window.addEventListener('resize',resize);
 
@@ -561,18 +615,42 @@ async function importJSONFile(file){
     return a + d * t;
   }
 
-  function step(dt){
-    // --- Drum Sequencer ---
-    if (musicModeActive && orbitActive) {
-      beatTime += dt;
-      if (beatTime >= TIME_PER_BEAT) {
-        beatTime -= TIME_PER_BEAT;
-        currentBeat = (currentBeat + 1) % BEATS_PER_BAR;
-        if (kickPattern && kickPattern[currentBeat] === 1) playKick();
-        if (hatPattern && hatPattern[currentBeat] === 1) playHat();
+  function scheduleNotes(start, end) {
+    for (let t = start; t < end; t += TIME_PER_BEAT) {
+      const beat = Math.floor(t / TIME_PER_BEAT) % BEATS_PER_BAR;
+      const microtimingOffset = (Math.random() * 2 - 1) * MICROTIMING_MAX_OFFSET; // -MAX_OFFSET to +MAX_OFFSET
+      const scheduledTime = t + microtimingOffset;
+
+      if (kickPattern && kickPattern[beat] === 1) playKick(scheduledTime, Audio.ctx, Audio.master);
+      if (hatPattern && hatPattern[beat] === 1) playHat(scheduledTime, Audio.ctx, Audio.master);
+
+      // Schedule chords for nodes passing playheads
+      if (musicModeActive && orbitActive) {
+        for (const n of nodes) {
+          // This part needs to be carefully integrated with the visual update loop
+          // For now, we'll assume nodes are checked against playheads in the main step loop
+          // and playChord is called from there. Microtiming for chords will be handled
+          // by the playChord function itself if it's called from the scheduler.
+          // However, the current playChord is called from step() based on visual crossing.
+          // To apply microtiming to chords, we need to rethink how chords are scheduled.
+          // For now, let's apply microtiming only to drums via this scheduler.
+          // Chords will get microtiming if playChord is eventually called from here.
+        }
       }
     }
+  }
 
+  function audioScheduler() {
+    const now = Audio.ctx.currentTime;
+    const lookahead = schedulerLookahead / 1000.0;
+    if (now + lookahead > nextNoteTime) {
+      scheduleNotes(nextNoteTime, now + lookahead);
+      nextNoteTime = now + lookahead;
+    }
+    schedulerTimerId = setTimeout(audioScheduler, schedulerInterval);
+  }
+
+  function step(dt){
     // layout tween
     if(Math.abs(orbitMix-orbitTarget)>1e-4){ const dir=Math.sign(orbitTarget-orbitMix); orbitMix=Math.min(1,Math.max(0,orbitMix+dir*ORBIT_TWEEN*dt)); orbitActive=(orbitMix===1)?true:(orbitMix===0?false:orbitActive); }
 
@@ -686,7 +764,7 @@ async function importJSONFile(file){
             const crossed = (n.omega > 0 && oldAngle < ph.angle && newAngle >= ph.angle) ||
                             (n.omega < 0 && oldAngle > ph.angle && newAngle <= ph.angle);
             if (crossed) {
-              playChord(n);
+              playChord(n, Audio.ctx.currentTime, Audio.ctx, Audio.master);
               n._pop = 1.0;
               n.hasPlayedThisFrame = true; // Prevent re-triggering on other playheads in same frame
               break; // Exit inner loop once played
@@ -873,11 +951,11 @@ function roundRect(c, x, y, w, h, r){
   let last=performance.now(); function loop(now){ const dt=Math.min(0.05,(now-last)/1000); last=now; step(dt); draw(); requestAnimationFrame(loop); }
 
 // ===== Music playback =====
-function playChord(node){
-  Audio.ensure();
-  if(Audio.ctx.state==='suspended') Audio.ctx.resume(); // for mobile
-  const t0 = Audio.ctx.currentTime;
-  const dur = 1.2; // longer duration for a more resonant feel
+function playChord(node, t0, ctx, masterNode){
+  // Create a panner for this specific chord
+  const panner = ctx.createStereoPanner();
+  panner.pan.value = Math.cos(node.angle);
+  panner.connect(masterNode);
 
   // Harmonics definition: [amplitude, type]
   const harmonics = [
@@ -890,17 +968,17 @@ function playChord(node){
 
   node.chordMidi.forEach((m, idx)=>{
     const freq = midiToFreq(m);
-    const noteGain = Audio.ctx.createGain();
+    const noteGain = ctx.createGain();
 
     // A more piano-like ADSR Envelope for the entire note
     const g = noteGain.gain;
     g.setValueAtTime(0.0001, t0);
     g.linearRampToValueAtTime(0.7, t0 + 0.02); // Quick attack
-    g.exponentialRampToValueAtTime(0.15, t0 + dur * 0.6); // Decay
-    g.linearRampToValueAtTime(0.0001, t0 + dur); // Release
+    g.exponentialRampToValueAtTime(0.15, t0 + 1.2 * 0.6); // Decay
+    g.linearRampToValueAtTime(0.0001, t0 + 1.2); // Release
 
     harmonics.forEach((h, i) => {
-      const osc = Audio.ctx.createOscillator();
+      const osc = ctx.createOscillator();
       osc.type = h[1];
       osc.frequency.value = freq * (i + 1);
 
@@ -908,64 +986,100 @@ function playChord(node){
       if(idx < detunes.length) osc.detune.value = detunes[idx] + i*2;
 
       // Create a gain node for this specific harmonic to control its volume
-      const partialGain = Audio.ctx.createGain();
+      const partialGain = ctx.createGain();
       partialGain.gain.value = h[0];
 
       osc.connect(partialGain);
       partialGain.connect(noteGain);
 
       osc.start(t0);
-      osc.stop(t0 + dur + 0.1);
+      osc.stop(t0 + 1.2 + 0.1);
     });
 
-    noteGain.connect(Audio.master);
+    noteGain.connect(panner);
   });
 }
 
-function playKick(){
-  Audio.ensure();
-  if(Audio.ctx.state==='suspended') Audio.ctx.resume();
-  const t0 = Audio.ctx.currentTime;
-  const osc = Audio.ctx.createOscillator();
-  const gain = Audio.ctx.createGain();
+function playKick(t0, ctx, masterNode){
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
   osc.type = 'sine';
   osc.frequency.setValueAtTime(150, t0);
   osc.frequency.exponentialRampToValueAtTime(0.01, t0 + 0.1);
-  gain.gain.setValueAtTime(0.8, t0); // Quieter kick
+  gain.gain.setValueAtTime(0.8, t0);
   gain.gain.exponentialRampToValueAtTime(0.01, t0 + 0.1);
   osc.connect(gain);
-  gain.connect(Audio.master);
+  gain.connect(masterNode);
   osc.start(t0);
   osc.stop(t0 + 0.12);
 }
 
-function playHat(){
-  Audio.ensure();
-  if(Audio.ctx.state==='suspended') Audio.ctx.resume();
-  const t0 = Audio.ctx.currentTime;
-  const bufferSize = Audio.ctx.sampleRate * 0.05; // Shorter
-  const buffer = Audio.ctx.createBuffer(1, bufferSize, Audio.ctx.sampleRate);
+function playHat(t0, ctx, masterNode){
+  const bufferSize = ctx.sampleRate * 0.05;
+  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
   const output = buffer.getChannelData(0);
   for (let i = 0; i < bufferSize; i++) {
-    output[i] = (Math.random() * 2 - 1) * 0.3; // Quieter
+    output[i] = (Math.random() * 2 - 1) * 0.3;
   }
-  const noise = Audio.ctx.createBufferSource();
+  const noise = ctx.createBufferSource();
   noise.buffer = buffer;
-  const bandpass = Audio.ctx.createBiquadFilter();
+  const bandpass = ctx.createBiquadFilter();
   bandpass.type = 'bandpass';
   bandpass.frequency.value = 12000;
-  const highpass = Audio.ctx.createBiquadFilter();
+  const highpass = ctx.createBiquadFilter();
   highpass.type = 'highpass';
   highpass.frequency.value = 9000;
-  const gain = Audio.ctx.createGain();
-  gain.gain.setValueAtTime(0.4, t0); // Quieter
+  const gain = ctx.createGain();
+  gain.gain.setValueAtTime(0.4, t0);
   gain.gain.exponentialRampToValueAtTime(0.01, t0 + 0.03);
   noise.connect(bandpass);
   bandpass.connect(highpass);
   highpass.connect(gain);
-  gain.connect(Audio.master);
+  gain.connect(masterNode);
   noise.start(t0);
   noise.stop(t0 + 0.04);
+}
+
+// Helper to convert AudioBuffer to WAV Blob
+function bufferToWav(buffer) {
+  const numOfChan = buffer.numberOfChannels,
+        btwLength = buffer.length * numOfChan * 2 + 44,
+        btwArrBuff = new ArrayBuffer(btwLength),
+        btwView = new DataView(btwArrBuff),
+        btwChans = [];
+  let offset = 0;
+  const writeString = (str) => {
+    for (let i = 0; i < str.length; i++) btwView.setUint8(offset + i, str.charCodeAt(i));
+    offset += str.length;
+  };
+
+  // Write WAV header
+  writeString('RIFF');
+  btwView.setUint32(offset, btwLength - 8, true); offset += 4;
+  writeString('WAVE');
+  writeString('fmt ');
+  btwView.setUint32(offset, 16, true); offset += 4;
+  btwView.setUint16(offset, 1, true); offset += 2;
+  btwView.setUint16(offset, numOfChan, true); offset += 2;
+  btwView.setUint32(offset, buffer.sampleRate, true); offset += 4;
+  btwView.setUint32(offset, buffer.sampleRate * numOfChan * 2, true); offset += 4;
+  btwView.setUint16(offset, numOfChan * 2, true); offset += 2;
+  btwView.setUint16(offset, 16, true); offset += 2;
+  writeString('data');
+  btwView.setUint32(offset, buffer.length * numOfChan * 2, true); offset += 4;
+
+  // Write audio data
+  for (let i = 0; i < numOfChan; i++) btwChans.push(buffer.getChannelData(i));
+
+  for (let i = 0; i < buffer.length; i++) {
+    for (let c = 0; c < numOfChan; c++) {
+      let sample = Math.max(-1, Math.min(1, btwChans[c][i])); // Clamp to -1, 1
+      sample = (sample < 0 ? sample * 0x8000 : sample * 0x7FFF) | 0; // Convert to 16-bit PCM
+      btwView.setInt16(offset, sample, true); offset += 2;
+    }
+  }
+
+  return new Blob([btwArrBuff], { type: 'audio/wav' });
 }
 
 // Bjorklund's algorithm for Euclidean rhythms
@@ -1011,6 +1125,124 @@ function getEuclideanRhythm(beats, steps) {
       n.startX=start.x; n.startY=start.y; n.targetX=tx; n.targetY=ty; n.x=n.startX; n.y=n.startY; n.freeX=n.x; n.freeY=n.y; n.animMode='enter'; n.animDur=1.0; n.animT=0; n.fade=0; n.scaleX=1.2; n.scaleY=0.85; const vx=(tx-n.startX), vy=(ty-n.startY); const L=Math.hypot(vx,vy)||1; n.vx += (vx/L)*50; n.vy += (vy/L)*50;
     }
   }
+
+  function addNodeAnimated(memo = ""){
+
+    const newIndex = nodes.length; // will become index after push
+    const n = new Node(nextId++);
+    n.createdAt = new Date();
+    n.memo = memo;
+
+    // connect to 2..4 random existing nodes (if any)
+    const connectN = nodes.length>0 ? (2 + Math.floor(Math.random()*3)) : 0; // 2-4
+    if(connectN>0){ const candidates=[...Array(nodes.length).keys()]; for(let t=0;t<connectN && candidates.length>0;t++){ const idx=Math.floor(Math.random()*candidates.length); const j=candidates.splice(idx,1)[0]; edges.push(new Edge(newIndex, j)); } }
+    nodes.push(n);
+    saveToSession();
+
+    // offscreen start
+    const {W,H}=screenSize(); const sides=['left','right','top','bottom']; const side=sides[Math.floor(Math.random()*sides.length)]; let sx,sy; if(side==='left'){ sx=-60; sy=Math.random()*H; } else if(side==='right'){ sx=W+60; sy=Math.random()*H; } else if(side==='top'){ sx=Math.random()*W; sy=-60; } else { sx=Math.random()*W; sy=H+60; }
+    const start = screenToWorld(sx,sy);
+
+    // 새 구조 목표 계산 + 링 보간 시작
+    startOrbitRelayout();
+
+    if(orbitTarget===1){ // Orbit: 타깃 궤도로 부드럽게 이동(enter)
+      const tt=n.orbitTarget; const ox=Math.cos(n.angle)*tt.radius, oy=Math.sin(n.angle)*tt.radius;
+      n.startX=start.x; n.startY=start.y; n.targetX=ox; n.targetY=oy; n.x=n.startX; n.y=n.startY; n.freeX=n.x; n.freeY=n.y; n.animMode='enter'; n.animDur=1.1; n.animT=0; n.fade=0; n.scaleX=1.2; n.scaleY=0.85;
+    } else { // Web: 이웃 평균 또는 원점으로 슬라이드-인
+      let tx=0, ty=0, cnt=0; for(const e of edges){ if(e.a===newIndex){ tx+=nodes[e.b].freeX; ty+=nodes[e.b].freeY; cnt++; } else if(e.b===newIndex){ tx+=nodes[e.a].freeX; ty+=nodes[e.a].freeY; cnt++; } }
+      if(cnt>0){ tx/=cnt; ty/=cnt; } else { tx=0; ty=0; }
+      n.startX=start.x; n.startY=start.y; n.targetX=tx; n.targetY=ty; n.x=n.startX; n.y=n.startY; n.freeX=n.x; n.freeY=n.y; n.animMode='enter'; n.animDur=1.0; n.animT=0; n.fade=0; n.scaleX=1.2; n.scaleY=0.85; const vx=(tx-n.startX), vy=(ty-n.startY); const L=Math.hypot(vx,vy)||1; n.vx += (vx/L)*50; n.vy += (vy/L)*50;
+    }
+  }
+
+// Function to export audio
+async function exportAudio() {
+  if (isRendering) return; // Prevent multiple renders
+  isRendering = true;
+  const exportButton = document.getElementById('exportWav');
+  exportButton.textContent = 'Rendering...';
+  exportButton.disabled = true;
+
+  // 1. Determine export duration
+  const renderDuration = exportBars * BEATS_PER_BAR * TIME_PER_BEAT;
+  console.log(`Rendering audio for ${exportBars} bars (${renderDuration.toFixed(2)} seconds).`);
+
+  // 2. Create OfflineAudioContext
+  const offlineCtx = new OfflineAudioContext(2, Audio.ctx.sampleRate * renderDuration, Audio.ctx.sampleRate);
+
+  // 3. Replicate the audio graph (master chain)
+  const offlineMaster = offlineCtx.createGain();
+  offlineMaster.gain.value = Audio.master.gain.value;
+
+  const offlineReverb = offlineCtx.createConvolver();
+  offlineReverb.buffer = Audio.createImpulseResponse(offlineCtx);
+
+  const offlineCompressor = offlineCtx.createDynamicsCompressor();
+  offlineCompressor.threshold.value = Audio.compressor.threshold.value;
+  offlineCompressor.knee.value = Audio.compressor.knee.value;
+  offlineCompressor.ratio.value = Audio.compressor.ratio.value;
+  offlineCompressor.attack.value = Audio.compressor.attack.value;
+  offlineCompressor.release.value = Audio.compressor.release.value;
+
+  offlineMaster.connect(offlineReverb);
+  offlineReverb.connect(offlineCompressor);
+  offlineCompressor.connect(offlineCtx.destination);
+
+  // 4. Simulate the entire sequence and schedule notes
+  const simulatedNodes = JSON.parse(JSON.stringify(nodes)); // Deep copy nodes to simulate offline
+  const simulatedPlayheads = JSON.parse(JSON.stringify(playheads)); // Deep copy playheads
+
+  let simulatedBeatTime = 0;
+  let simulatedCurrentBeat = 0;
+
+  const dt = 0.01; // Simulation step time (e.g., 10ms)
+  for (let t = 0; t < renderDuration; t += dt) {
+          // Simulate drum sequencer
+          simulatedBeatTime += dt;
+          if (simulatedBeatTime >= TIME_PER_BEAT) {
+            simulatedBeatTime -= TIME_PER_BEAT;
+            simulatedCurrentBeat = (simulatedCurrentBeat + 1) % BEATS_PER_BAR;
+            const scheduledTime = t + (Math.random() * 2 - 1) * MICROTIMING_MAX_OFFSET;
+            // if (kickPattern && kickPattern[simulatedCurrentBeat] === 1) playKick(scheduledTime, offlineCtx, offlineMaster);
+            // if (hatPattern && hatPattern[simulatedCurrentBeat] === 1) playHat(scheduledTime, offlineCtx, offlineMaster);
+          }
+    // Simulate node movement and playhead crossings
+    for (const n of simulatedNodes) {
+      const oldAngle = (n.angle % TWO_PI + TWO_PI) % TWO_PI;
+      n.angle += n.omega * dt * globalSpeedMultiplier; // Apply global speed multiplier
+      const newAngle = (n.angle % TWO_PI + TWO_PI) % TWO_PI;
+
+      for (const ph of simulatedPlayheads) {
+        const crossed = (n.omega * globalSpeedMultiplier > 0 && oldAngle < ph.angle && newAngle >= ph.angle) ||
+                        (n.omega * globalSpeedMultiplier < 0 && oldAngle > ph.angle && newAngle <= ph.angle);
+        if (crossed) {
+          // Apply microtiming to chord playback as well
+          const chordScheduledTime = t + (Math.random() * 2 - 1) * MICROTIMING_MAX_OFFSET;
+          playChord(n, chordScheduledTime, offlineCtx, offlineMaster);
+        }
+      }
+    }
+  }
+
+  // 5. Start rendering
+  const renderedBuffer = await offlineCtx.startRendering();
+
+  // 6. Convert to WAV and download
+  const wavBlob = bufferToWav(renderedBuffer);
+  const url = URL.createObjectURL(wavBlob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().replace(/[:.]/g,'-');
+  a.href = url;
+  a.download = `orbit_graph_audio-${stamp}.wav`;
+  a.click();
+  URL.revokeObjectURL(url);
+
+  isRendering = false;
+  exportButton.textContent = 'Export WAV';
+  exportButton.disabled = false;
+  alert('Audio exported successfully!');
+}
 
   function onContextMenu(e){
     e.preventDefault();
@@ -1165,7 +1397,9 @@ canvas.addEventListener('click', (e)=>{
   if(i>=0){
     const n = nodes[i];
     n._pop = 1.0;       // visual feedback
-    playChord(n);       // play chord
+    Audio.ensure(); // Ensure AudioContext is running
+    if (Audio.ctx.state === 'suspended') Audio.ctx.resume();
+    playChord(n, Audio.ctx.currentTime, Audio.ctx, Audio.master);       // play chord
   }
 });
 
@@ -1176,21 +1410,31 @@ canvas.addEventListener('click', (e)=>{
   const fabAdd = document.getElementById('fabAdd');
   const btnSave = document.getElementById('saveJSON');
   const btnLoad = document.getElementById('loadJSON');
+  const btnExportWav = document.getElementById('exportWav');
   const fileInput = document.getElementById('fileInput');
   const speedSlider = document.getElementById('speedSlider');
+  const exportBarsInput = document.getElementById('exportBarsInput');
   const uiToggle = document.getElementById('uiToggle');
   const topbarEl = document.getElementById('topbar');
   const btnMusic = document.getElementById('toggleMusic');
 
   btnMusic.addEventListener('click', ()=>{
     musicModeActive = !musicModeActive;
+    if (musicModeActive) {
+      Audio.ensure();
+      if (Audio.ctx.state === 'suspended') Audio.ctx.resume();
+      nextNoteTime = Audio.ctx.currentTime;
+      audioScheduler();
+    } else {
+      clearTimeout(schedulerTimerId);
+    }
     btnMusic.textContent = musicModeActive ? '🎵 Music: On' : '🎵 Music: Off';
     btnMusic.setAttribute('aria-pressed', String(musicModeActive));
   });
 
   uiToggle?.addEventListener('click', ()=>{
     const collapsed = topbarEl.classList.toggle('collapsed');
-    uiToggle.textContent = collapsed ? '▼ UI' : '▲ UI';
+    uiToggle.textContent = collapsed ? '▼ Tool' : '▲ Tool';
     uiToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
   });
 
@@ -1200,12 +1444,21 @@ canvas.addEventListener('click', (e)=>{
   fabAdd.addEventListener('click', openAddNodeModal);
   btnSave.addEventListener('click', exportJSON);
   btnLoad.addEventListener('click', ()=> fileInput.click());
+  btnExportWav.addEventListener('click', exportAudio);
   fileInput.addEventListener('change', (e)=> importJSONFile(e.target.files[0]));
 
   speedSlider.addEventListener('input', (e)=>{
     globalSpeedMultiplier = +e.target.value;
     // Recalculate orbit targets with new speed
     startOrbitRelayout();
+  });
+
+  exportBarsInput.addEventListener('input', (e)=>{
+    let val = parseInt(e.target.value, 10);
+    if (isNaN(val) || val < 1) val = 1;
+    if (val > 64) val = 64; // Max 64 bars for reasonable export times
+    exportBars = val;
+    e.target.value = val;
   });
 
 

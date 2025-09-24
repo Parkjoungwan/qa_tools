@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Orbit/Web Graph — smooth relayout + zoom/pan + edges + neighbor follow + add/remove + focus UX + save/load</title>
+  <title>Orbit/Web Graph — Force-Directed (Cooling + Adaptive k + BH + Coarsening)</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700&display=swap" rel="stylesheet">
@@ -11,11 +11,11 @@
     :root { --bg:#0b0f14; --fg:#cfe8ff; --muted:#7d8da3; }
     html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font-family:'Noto Sans KR', Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;}
     /* Collapsible UI Panel */
-    #uiPanel{position:fixed;left:10px;top:10px;z-index:10;min-width:220px}
-    #uiToggle{background:rgba(124,192,255,.14);color:var(--fg);border:1px solid rgba(124,192,255,.28);border-radius:10px;padding:6px 10px;font-size:12px;cursor:pointer}
+    #uiPanel{position:fixed;left:10px;top:10px;z-index:10}
+    #uiToggle{width:80px;background:rgba(124,192,255,.14);color:var(--fg);border:1px solid rgba(124,192,255,.28);border-radius:10px;padding:6px 10px;font-size:12px;cursor:pointer}
     #uiToggle:hover{background:rgba(124,192,255,.22)}
-    #topbar{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;max-height:500px;overflow:hidden;transition:max-height .25s ease, opacity .2s ease;opacity:1}
-    #topbar.collapsed{max-height:0;opacity:0;pointer-events:none;margin-top:0}
+    #topbar{display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;max-height:500px;overflow:hidden;transition:max-height .25s ease, opacity .2s ease;opacity:1;max-width:180px}
+    #topbar.collapsed{max-height:0;opacity:0;pointer-events:none}
     #topbar button{background:rgba(124,192,255,.12);color:var(--fg);border:1px solid rgba(124,192,255,.25);border-radius:10px;padding:6px 10px;font-size:12px;cursor:pointer}
     #topbar button:hover{background:rgba(124,192,255,.22)}
     .slider-container{display:flex;align-items:center;gap:6px;font-size:12px;padding:0 4px}
@@ -60,7 +60,7 @@
 </head>
 <body>
   <div id="uiPanel">
-    <button id="uiToggle" aria-expanded="true" title="접기/펼치기">▲ UI</button>
+    <button id="uiToggle" aria-expanded="true" title="접기/펼치기">▲ Tool</button>
     <div id="topbar">
       <button id="toggleLayout" aria-pressed="true">Layout: Orbit</button>
       <button id="toggleEdges" aria-pressed="true">Edges: On</button>
@@ -69,6 +69,7 @@
       <button id="saveJSON">extract</button>
       <button id="loadJSON">import</button>
       <button id="exportWav">Export WAV</button>
+
       <div class="slider-container">
         <label for="speedSlider">Speed</label>
         <input type="range" id="speedSlider" min="0.1" max="3.0" step="0.05" value="1.0" />
@@ -76,6 +77,10 @@
       <div class="slider-container">
         <label for="exportBarsInput">Bars</label>
         <input type="number" id="exportBarsInput" min="1" max="64" value="4" />
+      </div>
+      <div class="slider-container">
+        <label for="chordVolumeSlider">Chord Vol</label>
+        <input type="range" id="chordVolumeSlider" min="0" max="1" step="0.01" value="0.3" />
       </div>
       <input type="file" id="fileInput" style="display:none" accept="application/json" />
     </div>
@@ -152,7 +157,7 @@ const Audio = {
     const ctx = new (window.AudioContext||window.webkitAudioContext)();
 
     // Create master gain
-    const master = ctx.createGain(); master.gain.value = 0.15; // Adjusted master volume
+    const master = ctx.createGain(); master.gain.value = 0.3; // Adjusted master volume for better audibility
 
     // Create Reverb (ConvolverNode)
     const reverb = ctx.createConvolver();
@@ -167,7 +172,7 @@ const Audio = {
     compressor.attack.value = 0.005;
     compressor.release.value = 0.15;
 
-    // Connect the chain: master -> reverb -> compressor -> destination
+    // Connect the main chain: master -> reverb -> compressor -> destination
     master.connect(reverb);
     reverb.connect(compressor);
     compressor.connect(ctx.destination);
@@ -180,7 +185,7 @@ const Audio = {
 
   createImpulseResponse(ctx) {
     const dur = 1.5; // seconds
-    const decay = 4.0;
+    const decay = 0.8; // Reduced decay for less reverb
     const len = ctx.sampleRate * dur;
     const impulse = ctx.createBuffer(2, len, ctx.sampleRate);
     for (let c = 0; c < 2; c++) { // Stereo
@@ -265,14 +270,12 @@ function assignNodeChords() {
   let hoverIndex=-1, mouseSX=0, mouseSY=0, mouseIn=false;
 
   // Drum machine state
-  let kickPattern = [], hatPattern = [];
   let currentBeat = 0, beatTime = 0;
   let exportBars = 4;
   let playheads = [{ id: 0, angle: Math.PI / 2 }];
   const BEATS_PER_BAR = 16;
-  const TEMPO = 120; // beats per minute
+  const TEMPO = 120; // beats per minute (reverted to original)
   const TIME_PER_BEAT = 60 / TEMPO / (BEATS_PER_BAR / 4); // Time per 16th note
-  const MICROTIMING_MAX_OFFSET = 0.015; // +/- 15ms for humanization
 
   function resize(){canvas.width=innerWidth*DPR;canvas.height=innerHeight*DPR;ctx.setTransform(DPR,0,0,DPR,0,0); updateMinScale();} resize(); window.addEventListener('resize',resize);
 
@@ -380,7 +383,7 @@ function assignNodeChords() {
 function serializeGraph(){
   return {
     version: 1,
-    nodes: nodes.map(n=>({
+    nodes: nodes.map(n=>({ 
       id:n.id, size:n.size, label:n.label,
       ring:n.ring, radius:n.radius, angle:n.angle, omega:n.omega,
       x:n.x, y:n.y, freeX:n.freeX, freeY:n.freeY,
@@ -621,8 +624,7 @@ async function importJSONFile(file){
       const microtimingOffset = (Math.random() * 2 - 1) * MICROTIMING_MAX_OFFSET; // -MAX_OFFSET to +MAX_OFFSET
       const scheduledTime = t + microtimingOffset;
 
-      if (kickPattern && kickPattern[beat] === 1) playKick(scheduledTime, Audio.ctx, Audio.master);
-      if (hatPattern && hatPattern[beat] === 1) playHat(scheduledTime, Audio.ctx, Audio.master);
+      // No drums scheduled
 
       // Schedule chords for nodes passing playheads
       if (musicModeActive && orbitActive) {
@@ -632,7 +634,7 @@ async function importJSONFile(file){
           // and playChord is called from there. Microtiming for chords will be handled
           // by the playChord function itself if it's called from the scheduler.
           // However, the current playChord is called from step() based on visual crossing.
-          // To apply microtiming to chords, we need to rethink how chords are scheduled.
+          // To apply microtiming to chords, we need to rethink how chords is scheduled.
           // For now, let's apply microtiming only to drums via this scheduler.
           // Chords will get microtiming if playChord is eventually called from here.
         }
@@ -1000,45 +1002,6 @@ function playChord(node, t0, ctx, masterNode){
   });
 }
 
-function playKick(t0, ctx, masterNode){
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = 'sine';
-  osc.frequency.setValueAtTime(150, t0);
-  osc.frequency.exponentialRampToValueAtTime(0.01, t0 + 0.1);
-  gain.gain.setValueAtTime(0.8, t0);
-  gain.gain.exponentialRampToValueAtTime(0.01, t0 + 0.1);
-  osc.connect(gain);
-  gain.connect(masterNode);
-  osc.start(t0);
-  osc.stop(t0 + 0.12);
-}
-
-function playHat(t0, ctx, masterNode){
-  const bufferSize = ctx.sampleRate * 0.05;
-  const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-  const output = buffer.getChannelData(0);
-  for (let i = 0; i < bufferSize; i++) {
-    output[i] = (Math.random() * 2 - 1) * 0.3;
-  }
-  const noise = ctx.createBufferSource();
-  noise.buffer = buffer;
-  const bandpass = ctx.createBiquadFilter();
-  bandpass.type = 'bandpass';
-  bandpass.frequency.value = 12000;
-  const highpass = ctx.createBiquadFilter();
-  highpass.type = 'highpass';
-  highpass.frequency.value = 9000;
-  const gain = ctx.createGain();
-  gain.gain.setValueAtTime(0.4, t0);
-  gain.gain.exponentialRampToValueAtTime(0.01, t0 + 0.03);
-  noise.connect(bandpass);
-  bandpass.connect(highpass);
-  highpass.connect(gain);
-  gain.connect(masterNode);
-  noise.start(t0);
-  noise.stop(t0 + 0.04);
-}
 
 // Helper to convert AudioBuffer to WAV Blob
 function bufferToWav(buffer) {
@@ -1057,7 +1020,6 @@ function bufferToWav(buffer) {
   writeString('RIFF');
   btwView.setUint32(offset, btwLength - 8, true); offset += 4;
   writeString('WAVE');
-  writeString('fmt ');
   btwView.setUint32(offset, 16, true); offset += 4;
   btwView.setUint16(offset, 1, true); offset += 2;
   btwView.setUint16(offset, numOfChan, true); offset += 2;
@@ -1095,36 +1057,6 @@ function getEuclideanRhythm(beats, steps) {
   // ===== Add/Delete (animated) =====
   function screenSize(){ return {W: canvas.width/DPR, H: canvas.height/DPR}; }
   function pickNearestEdgeScreen(x,y){ const {W,H}=screenSize(); const dLeft=x, dRight=W-x, dTop=y, dBottom=H-y; const min=Math.min(dLeft,dRight,dTop,dBottom); if(min===dLeft) return {side:'left', tx:-40, ty:y}; if(min===dRight) return {side:'right', tx:W+40, ty:y}; if(min===dTop) return {side:'top', tx:x, ty:-40}; return {side:'bottom', tx:x, ty:H+40}; }
-
-  function addNodeAnimated(memo = ""){
-
-    const newIndex = nodes.length; // will become index after push
-    const n = new Node(nextId++);
-    n.createdAt = new Date();
-    n.memo = memo;
-
-    // connect to 2..4 random existing nodes (if any)
-    const connectN = nodes.length>0 ? (2 + Math.floor(Math.random()*3)) : 0; // 2-4
-    if(connectN>0){ const candidates=[...Array(nodes.length).keys()]; for(let t=0;t<connectN && candidates.length>0;t++){ const idx=Math.floor(Math.random()*candidates.length); const j=candidates.splice(idx,1)[0]; edges.push(new Edge(newIndex, j)); } }
-    nodes.push(n);
-    saveToSession();
-
-    // offscreen start
-    const {W,H}=screenSize(); const sides=['left','right','top','bottom']; const side=sides[Math.floor(Math.random()*sides.length)]; let sx,sy; if(side==='left'){ sx=-60; sy=Math.random()*H; } else if(side==='right'){ sx=W+60; sy=Math.random()*H; } else if(side==='top'){ sx=Math.random()*W; sy=-60; } else { sx=Math.random()*W; sy=H+60; }
-    const start = screenToWorld(sx,sy);
-
-    // 새 구조 목표 계산 + 링 보간 시작
-    startOrbitRelayout();
-
-    if(orbitTarget===1){ // Orbit: 타깃 궤도로 부드럽게 이동(enter)
-      const tt=n.orbitTarget; const ox=Math.cos(n.angle)*tt.radius, oy=Math.sin(n.angle)*tt.radius;
-      n.startX=start.x; n.startY=start.y; n.targetX=ox; n.targetY=oy; n.x=n.startX; n.y=n.startY; n.freeX=n.x; n.freeY=n.y; n.animMode='enter'; n.animDur=1.1; n.animT=0; n.fade=0; n.scaleX=1.2; n.scaleY=0.85;
-    } else { // Web: 이웃 평균 또는 원점으로 슬라이드-인
-      let tx=0, ty=0, cnt=0; for(const e of edges){ if(e.a===newIndex){ tx+=nodes[e.b].freeX; ty+=nodes[e.b].freeY; cnt++; } else if(e.b===newIndex){ tx+=nodes[e.a].freeX; ty+=nodes[e.a].freeY; cnt++; } }
-      if(cnt>0){ tx/=cnt; ty/=cnt; } else { tx=0; ty=0; }
-      n.startX=start.x; n.startY=start.y; n.targetX=tx; n.targetY=ty; n.x=n.startX; n.y=n.startY; n.freeX=n.x; n.freeY=n.y; n.animMode='enter'; n.animDur=1.0; n.animT=0; n.fade=0; n.scaleX=1.2; n.scaleY=0.85; const vx=(tx-n.startX), vy=(ty-n.startY); const L=Math.hypot(vx,vy)||1; n.vx += (vx/L)*50; n.vy += (vy/L)*50;
-    }
-  }
 
   function addNodeAnimated(memo = ""){
 
@@ -1198,15 +1130,15 @@ async function exportAudio() {
 
   const dt = 0.01; // Simulation step time (e.g., 10ms)
   for (let t = 0; t < renderDuration; t += dt) {
-          // Simulate drum sequencer
-          simulatedBeatTime += dt;
-          if (simulatedBeatTime >= TIME_PER_BEAT) {
-            simulatedBeatTime -= TIME_PER_BEAT;
-            simulatedCurrentBeat = (simulatedCurrentBeat + 1) % BEATS_PER_BAR;
-            const scheduledTime = t + (Math.random() * 2 - 1) * MICROTIMING_MAX_OFFSET;
-            // if (kickPattern && kickPattern[simulatedCurrentBeat] === 1) playKick(scheduledTime, offlineCtx, offlineMaster);
-            // if (hatPattern && hatPattern[simulatedCurrentBeat] === 1) playHat(scheduledTime, offlineCtx, offlineMaster);
-          }
+    // Simulate drum sequencer
+    simulatedBeatTime += dt;
+    if (simulatedBeatTime >= TIME_PER_BEAT) {
+      simulatedBeatTime -= TIME_PER_BEAT;
+      simulatedCurrentBeat = (simulatedCurrentBeat + 1) % BEATS_PER_BAR;
+      const scheduledTime = t;
+
+    }
+
     // Simulate node movement and playhead crossings
     for (const n of simulatedNodes) {
       const oldAngle = (n.angle % TWO_PI + TWO_PI) % TWO_PI;
@@ -1218,7 +1150,7 @@ async function exportAudio() {
                         (n.omega * globalSpeedMultiplier < 0 && oldAngle > ph.angle && newAngle <= ph.angle);
         if (crossed) {
           // Apply microtiming to chord playback as well
-          const chordScheduledTime = t + (Math.random() * 2 - 1) * MICROTIMING_MAX_OFFSET;
+          const chordScheduledTime = t + (Math.random() * 2 - 1) * 0.008; // Apply microtiming directly
           playChord(n, chordScheduledTime, offlineCtx, offlineMaster);
         }
       }
@@ -1282,7 +1214,7 @@ async function exportAudio() {
   function closeConfirm(){ showingConfirm=false; backdrop.style.display='none'; modal.style.display='none'; }
   backdrop.addEventListener('click', ()=>{ closeConfirm(); pendingDeleteIndex=-1; });
   btnCancel.addEventListener('click', ()=>{ closeConfirm(); pendingDeleteIndex=-1; });
-  window.addEventListener('keydown', (ev)=>{ if(!showingConfirm) return; if(ev.key==='Escape'){ closeConfirm(); pendingDeleteIndex=-1; } });
+  window.addEventListener('keydown', (ev)=>{ if(!showingConfirm) return; if(ev.key === 'Escape'){ closeConfirm(); pendingDeleteIndex=-1; } });
   btnDelete.addEventListener('click', ()=>{ if(pendingDeleteIndex<0){ closeConfirm(); return; } const n=nodes[pendingDeleteIndex]; if(!n){ closeConfirm(); pendingDeleteIndex=-1; return; } const sp = worldToScreen(n.x,n.y); const tgt = pickNearestEdgeScreen(sp.x, sp.y); const worldT = screenToWorld(tgt.tx, tgt.ty); n.animMode='exit'; n.animT=0; n.animDur=1.1; n.startX=n.x; n.startY=n.y; n.targetX=worldT.x; n.targetY=worldT.y; n.pinned=true; n.scaleX=1.15; n.scaleY=0.85; closeConfirm(); pendingDeleteIndex=-1; });
 
   // ===== Add Node Modal Logic =====
@@ -1335,9 +1267,7 @@ async function exportAudio() {
     const R = computeContentRadius();
     const D = 0.9; // duration seconds
 
-    // 1. Create drum patterns
-    kickPattern = getEuclideanRhythm(4, BEATS_PER_BAR); // Four-on-the-floor
-    hatPattern = getEuclideanRhythm(8, BEATS_PER_BAR);  // 8th notes
+    // No drum patterns created
 
     // 2. Group nodes by ring
     const nodesByRing = new Map();
@@ -1413,6 +1343,7 @@ canvas.addEventListener('click', (e)=>{
   const btnExportWav = document.getElementById('exportWav');
   const fileInput = document.getElementById('fileInput');
   const speedSlider = document.getElementById('speedSlider');
+  const chordVolumeSlider = document.getElementById('chordVolumeSlider');
   const exportBarsInput = document.getElementById('exportBarsInput');
   const uiToggle = document.getElementById('uiToggle');
   const topbarEl = document.getElementById('topbar');
@@ -1434,7 +1365,7 @@ canvas.addEventListener('click', (e)=>{
 
   uiToggle?.addEventListener('click', ()=>{
     const collapsed = topbarEl.classList.toggle('collapsed');
-    uiToggle.textContent = collapsed ? '▼ UI' : '▲ UI';
+    uiToggle.textContent = collapsed ? '▼ Tool' : '▲ Tool';
     uiToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
   });
 
@@ -1451,6 +1382,12 @@ canvas.addEventListener('click', (e)=>{
     globalSpeedMultiplier = +e.target.value;
     // Recalculate orbit targets with new speed
     startOrbitRelayout();
+  });
+
+  chordVolumeSlider.addEventListener('input', (e)=>{
+    if (Audio.master) {
+      Audio.master.gain.value = +e.target.value;
+    }
   });
 
   exportBarsInput.addEventListener('input', (e)=>{
@@ -1484,7 +1421,7 @@ canvas.addEventListener('click', (e)=>{
       console.assert(n1===n0+1,'add node length');
       console.assert(n0===0 || e1>=e0+2, 'add node adds edges when graph non-empty');
       // trigger removal test by deleting the last node via synthetic exit
-      const last=nodes[nodes.length-1]; last.animMode='exit'; last.animT=0; last.animDur=0.2; last.startX=last.x; last.startY=last.y; const sc=worldToScreen(last.x,last.y); const edge=pickNearestEdgeScreen(sc.x,sc.y); const wt=screenToWorld(edge.tx,edge.ty); last.targetX=wt.x; last.targetY=wt.y; last.pinned=true;
+      const last=nodes[nodes.length-1]; last.animMode='exit'; last.animT=0; last.animDur=0.2; last.startX=last.x; last.startY=last.y; const sc=worldToScreen(last.x,last.y); const edge=pickNearestEdgeScreen(sc.x,sc.y); const wt=screenToWorld(edge.tx,edge.ty); last.targetX=wt.x; last.targetY=wt.ty; last.pinned=true;
       console.groupEnd();
 
       console.groupCollapsed('%cShuffleTweenTest','color:#6f9');
