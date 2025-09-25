@@ -1045,16 +1045,7 @@ async function importJSONFile(file){
       const p = worldToScreen(n.x, n.y);
       drawSpeechBubbleHUD(p.x, p.y, n);
     }
-    // draw chord info (HUD)
-ctx.save();
-ctx.translate(12, 12);
-ctx.font = '12px "Noto Sans KR"';
-ctx.fillStyle='rgba(200,235,255,0.8)';
-ctx.fillText(
-  `Chord ${currentBar+1}/${CHORD_TIMELINE.length}  (bar ${phraseBar+1}/${HARMONY_HOLDBARS})  ${CHORD_TIMELINE[currentBar]}`,
-  0, 12
-);
-ctx.restore();
+
     ctx.restore(); }
 
 // ===== HUD (speech bubble) =====
