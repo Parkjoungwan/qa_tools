@@ -22,77 +22,36 @@
     const state = { key:0, mode:"Major", quality:"Triad", inversion:0, baseOct:4, preset:"C", presetType:"harm", bpm:100 };
     let audioSetupDone = false;
 
-    // --- Audio Nodes (Creation only) ---
+    // --- Audio Nodes ---
     const masterOut = new Tone.Gain(1);
     const masterLimiter = new Tone.Limiter(-1).toDestination();
     masterOut.connect(masterLimiter);
 
     const chordDucker = new Tone.Gain(1.0);
     const chordBus = new Tone.Gain(0.9).connect(chordDucker).connect(masterOut);
-    // drum bus (OP-KO chain): Sampler -> KO FX -> Lo-fi stage -> master
-    const drumBus = new Tone.Gain(1.0);
-    // OP-KO FX (punch-in): stutter/gater/tape/wow/bits/lpf/rev/pump
-    const fxStutter = new Tone.FeedbackDelay(0.06, 0.25); fxStutter.wet.value = 0;
-    const fxGate   = new Tone.Tremolo(8, 0.9);    fxGate.wet.value   = 0;
-    const fxTapeRP = new Tone.PitchShift({ pitch: 0 });   // tape-stop 흉내(피치→-12로 램프)
-    const fxWow    = new Tone.Vibrato(0.3, 0.03);         fxWow.wet.value    = 0;
-    const fxBits   = new Tone.BitCrusher(8);              fxBits.wet ? fxBits.wet.value=0 : 0;
-    const fxLP     = new Tone.Filter(12000, "lowpass", -24);
-    const fxRev    = new Tone.Reverb({ decay: 0.7, wet: 0 });
-    // 기존 lo-fi 스테이지(색감 유지)
-    const drumCrusher = new Tone.BitCrusher(4);
-    const drumLP = new Tone.Filter(7800, "lowpass", -24);
-    const drumDrive = new Tone.Distortion(0.12);
-    const drumFlutter = new Tone.Vibrato(0.28, 0.02);
-    // chain: Drum → (KO FX들 직렬) → Lo-fi → master
-    drumBus.chain(fxStutter, fxGate, fxTapeRP, fxWow, fxBits, fxLP, fxRev, drumCrusher, drumLP, drumDrive, drumFlutter, masterOut);
+    const drumBus = new Tone.Gain(1.0).connect(masterOut);
 
-    // OP-KO: 샘플 뱅크(1~4)
-    const BANKS = {
-      1: { kck:"/assets/b1/kick.wav", snr:"/assets/b1/snare.wav", cht:"/assets/b1/hat_closed.wav", ohat:"/assets/b1/hat_open.wav", clp:"/assets/b1/clap.wav", tom:"/assets/b1/tom.wav", rid:"/assets/b1/ride.wav" },
-      2: { kck:"/assets/b2/kick.wav", snr:"/assets/b2/snare.wav", cht:"/assets/b2/hat_closed.wav", ohat:"/assets/b2/hat_open.wav", clp:"/assets/b2/clap.wav", tom:"/assets/b2/tom.wav", rid:"/assets/b2/ride.wav" },
-      3: { kck:"/assets/b3/kick.wav", snr:"/assets/b3/snare.wav", cht:"/assets/b3/hat_closed.wav", ohat:"/assets/b3/hat_open.wav", clp:"/assets/b3/clap.wav", tom:"/assets/b3/tom.wav", rid:"/assets/b3/ride.wav" },
-      4: { kck:"/assets/b4/kick.wav", snr:"/assets/b4/snare.wav", cht:"/assets/b4/hat_closed.wav", ohat:"/assets/b4/hat_open.wav", clp:"/assets/b4/clap.wav", tom:"/assets/b4/tom.wav", rid:"/assets/b4/ride.wav" },
+    const chordSynth = new Tone.PolySynth(Tone.Synth, { maxPolyphony: 24, volume:-6 }).connect(chordBus);
+    chordSynth.set({ envelope:{ attack:0.01, decay:0.18, sustain:0.8, release:0.5 }, oscillator:{ type:"triangle" } });
+    Tone.Transport.bpm.value = state.bpm;
+
+    // --- New Sampler-based Drums ---
+    const SAMPLES = {
+      kick: "/assets/kick.wav",
+      snare: "/assets/snare.wav",
+      hat: "/assets/hat.wav",
+      crunch: "/assets/crunch.wav",
+      clap: "/assets/clap.wav",
+      bell: "/assets/bell.wav",
     };
-    let currentBank = 1;
     const samplers = {};
-    const hatOpenGate = new Tone.Gain(1).connect(drumBus);
-    let ohPlayer = null;
-
-    function loadBank(n){
-      currentBank = n;
-      const S = BANKS[n];
-      // dispose & rebuild
-      for (const k of Object.keys(samplers)) { try{ samplers[k].dispose(); }catch{} delete samplers[k]; }
-      if (ohPlayer){ try{ ohPlayer.dispose(); }catch{} ohPlayer=null; }
-      for (const [k, url] of Object.entries(S)) {
-        if (k === "ohat") continue; // open-hat는 별도 게이트로
-        samplers[k] = new Tone.Player({ url, volume: -2 }).connect(drumBus);
-      }
-      ohPlayer = new Tone.Player({ url: S.ohat, volume: -2 }).connect(hatOpenGate);
-      // UI 표시
-      document.querySelectorAll(".bank-btn").forEach(b=> b.classList.toggle("active", Number(b.dataset.bank)===n));
-    }
-    loadBank(1);
 
     // --- Deferred Audio Setup ---
     function setupDeferredAudio(){
-      fxGate.start();
-      // Drum Bus FX
-      const drumCrusher = new Tone.BitCrusher(4);
-      const drumLP = new Tone.Filter(7800, "lowpass", -24);
-      const drumDrive = new Tone.Distortion(0.12);
-      const drumFlutter = new Tone.Vibrato(0.28, 0.02);
-      drumBus.chain(drumCrusher, drumLP, drumDrive, drumFlutter, masterOut);
-
-      // Vinyl Noise
-      const vinylNoise = new Tone.Noise("pink");
-      const vinylHP = new Tone.Filter(2500, "highpass", -12);
-      const vinylLP = new Tone.Filter(8000, "lowpass", -12);
-      const vinylCrush = new Tone.BitCrusher(6);
-      const vinylGain = new Tone.Gain(0.02).connect(masterOut);
-      vinylNoise.chain(vinylHP, vinylLP, vinylCrush, vinylGain);
-      vinylNoise.start();
+      // Load samplers
+      for (const [k, url] of Object.entries(SAMPLES)) {
+        samplers[k] = new Tone.Player({ url, volume: -2 }).connect(drumBus);
+      }
     }
 
     const ui = { keyName: $("#keyName"), modeName: $("#modeName"), qualityName: $("#qualityName"), invName: $("#invName"), octName: $("#octName"), presetName: $("#presetName"), bpmName: $("#bpmName"), recName: $("#recName"), recDot: $("#recDot"), compass: $("#compass"), tracks: $("#tracks") };
@@ -138,50 +97,13 @@
     }
     const chordNow = (slotId)=> chordSeven(slotId, state);
 
-    // per-slot trim info: 0~1 (비율), reverse flag
-    const TRIM = {
-      kck:{ start:0, end:1, rev:false },
-      snr:{ start:0, end:1, rev:false },
-      cht:{ start:0, end:1, rev:false },
-      ohat:{ start:0, end:1, rev:false },
-      clp:{ start:0, end:1, rev:false },
-      tom:{ start:0, end:1, rev:false },
-      rid:{ start:0, end:1, rev:false },
-    };
-    function triggerWithTrim(player, id, when){
-      if (!player || !player.buffer || !player.buffer.duration) { player?.start(when); return; }
-      const d = player.buffer.duration;
-      let { start, end, rev } = TRIM[id];
-      start = Math.max(0, Math.min(start, 0.95));
-      end   = Math.max(start+0.05, Math.min(end, 1));
-      const off = start * d;
-      const dur = (end - start) * d;
-      player.reverse = !!rev;
-      player.start(when, off, dur);
-    }
-
     function triggerDrum(slotId, when){
-      // K0..K6 -> kck/snr/cht/tom/ohat/clp/rid
-      const map = { K0:"kck", K1:"snr", K2:"cht", K3:"tom", K4:"ohat", K5:"clp", K6:"rid" };
+      const map = { K0:"kick", K1:"snare", K2:"hat", K3:"crunch", K4:"clap", K5:"bell" };
       const id = map[slotId];
-      if (!id) return;
-      if (id === "ohat"){
-        // open hat trigger + choke reset
-        hatOpenGate.gain.cancelScheduledValues(when);
-        hatOpenGate.gain.setValueAtTime(1, when);
-        triggerWithTrim(ohPlayer, "ohat", when);
-      } else {
-        // close hat 가 오픈햇 초크
-        if (id === "cht"){
-          hatOpenGate.gain.cancelScheduledValues(when);
-          hatOpenGate.gain.setValueAtTime(hatOpenGate.gain.value, when);
-          hatOpenGate.gain.linearRampToValueAtTime(0, when + 0.005);
-          hatOpenGate.gain.linearRampToValueAtTime(1, when + 0.08);
-        }
-        triggerWithTrim(samplers[id], id, when);
-      }
-      // 킥 → 코드 버스 펌프 (사이드체인)
-      if (id === "kck"){
+      if (!id || !samplers[id]) return;
+      samplers[id].start(when);
+      // Sidechain ducking for kick
+      if (id === "kick"){
         chordDucker.gain.cancelScheduledValues(when);
         chordDucker.gain.setValueAtTime(chordDucker.gain.value, when);
         chordDucker.gain.linearRampToValueAtTime(0.7, when+0.05);
@@ -193,8 +115,16 @@
     const keyElBySlot = { K0: document.querySelector('[data-slot="K0"]'), K1: document.querySelector('[data-slot="K1"]'), K2: document.querySelector('[data-slot="K2"]'), K3: document.querySelector('[data-slot="K3"]'), K4: document.querySelector('[data-slot="K4"]'), K5: document.querySelector('[data-slot="K5"]'), K6: document.querySelector('[data-slot="K6"]'), };
     const held = new Map();
     const KEY_TO_SLOT = { q:"K0", w:"K1", e:"K2", r:"K3", "2":"K4", "3":"K5", "4":"K6" };
+    const pressDebounce = {};
+    const DEBOUNCE_THRESHOLD = 50; // ms
 
     async function pressSlot(slotId, keyChar){
+      const now = performance.now();
+      if (pressDebounce[slotId] && (now - pressDebounce[slotId] < DEBOUNCE_THRESHOLD)) {
+        return; // Debounce the call
+      }
+      pressDebounce[slotId] = now;
+
       if (!audioSetupDone) {
         await Tone.start();
         setupDeferredAudio();
@@ -234,62 +164,20 @@
     function applyPreset(name){ if(name==="C") return; const p=PRESETS[name]; if(!p) return; if(p.type==="drum"){ state.presetType="drum"; state.preset=name; }else{ state.presetType="harm"; state.mode=p.mode; state.quality=p.quality; state.inversion=p.inversion; state.baseOct=p.baseOct; state.preset=name; } updateStatus(); retargetHeld(); }
     document.querySelectorAll(".dir").forEach(el=> el.addEventListener("click", ()=>applyPreset(el.dataset.dir)));
 
-    // OP-KO pads & FX
+    // Drum Pad Clicks
     document.querySelectorAll(".ko-pad").forEach(el=>{
       el.addEventListener("click", async ()=>{
-        if (state.presetType!=="drum") applyPreset("S");
+        if (state.presetType!=="drum") applyPreset("S"); // Switch to drum mode if not already
         await Tone.start();
-        const id = el.dataset.ko;
+        const id = el.dataset.ko; // "kick", "snare", etc.
         const now = Tone.now();
-        const map = {kck:"K0", snr:"K1", cht:"K2", tom:"K3", ohat:"K4", clp:"K5", rid:"K6"};
+        // Map pad id to key slot
+        const map = {kick:"K0", snare:"K1", hat:"K2", crunch:"K3", clap:"K4", bell:"K5"};
         const slot = map[id];
         if (slot) triggerDrum(slot, now);
         el.classList.add("active"); setTimeout(()=> el.classList.remove("active"), 120);
       });
     });
-    document.querySelectorAll(".fx").forEach(el=>{
-      const code = el.dataset.fx;
-      el.addEventListener("mousedown", ()=> koFxDown(({stut:"a",gate:"s",tape:"d",wow:"f",bits:"g",lpf:"h",rev:"j",pump:"k"})[code]));
-      el.addEventListener("mouseup",   ()=> koFxUp  (({stut:"a",gate:"s",tape:"d",wow:"f",bits:"g",lpf:"h",rev:"j",pump:"k"})[code]));
-      el.addEventListener("mouseleave",()=> koFxUp  (({stut:"a",gate:"s",tape:"d",wow:"f",bits:"g",lpf:"h",rev:"j",pump:"k"})[code]));
-    });
-
-    // FX knobs binding
-    (function bindFxKnobs(){
-      const q = (s)=>document.querySelector(s);
-      q(".kn.stut")?.addEventListener("input", e=> fxStutter.wet.rampTo(parseFloat(e.target.value), 0.05));
-      q(".kn.gate")?.addEventListener("input", e=> fxGate.wet.rampTo(parseFloat(e.target.value), 0.05));
-      q(".kn.wow") ?.addEventListener("input", e=> fxWow.wet.rampTo(parseFloat(e.target.value), 0.05));
-      q(".kn.bits")?.addEventListener("input", e=> { fxBits.bits = parseInt(e.target.value,10); });
-      q(".kn.lpf") ?.addEventListener("input", e=> fxLP.frequency.rampTo(parseFloat(e.target.value), 0.05));
-      q(".kn.rev") ?.addEventListener("input", e=> fxRev.wet.rampTo(parseFloat(e.target.value), 0.05));
-    })();
-
-    // Bank buttons & number keys
-    document.querySelectorAll(".bank-btn").forEach(b=>{
-      b.addEventListener("click", ()=> loadBank(Number(b.dataset.bank)));
-    });
-    window.addEventListener("keydown", (e)=>{
-      if (e.repeat) return;
-      if (["1","2","3","4"].includes(e.key)){
-        loadBank(Number(e.key));
-      }
-    });
-
-    // Trim bindings
-    const trimSlotSel = document.getElementById("trimSlot");
-    const trimStart = document.getElementById("trimStart");
-    const trimEnd   = document.getElementById("trimEnd");
-    const trimRev   = document.getElementById("trimRev");
-    function syncTrimUI(){
-      const t = TRIM[trimSlotSel.value]; if(!t) return;
-      trimStart.value = t.start; trimEnd.value = t.end; trimRev.checked = t.rev;
-    }
-    trimSlotSel?.addEventListener("change", syncTrimUI);
-    trimStart?.addEventListener("input", ()=>{ const t=TRIM[trimSlotSel.value]; t.start=parseFloat(trimStart.value); if(t.end<=t.start) { t.end=Math.min(1,t.start+0.05); trimEnd.value=t.end; }});
-    trimEnd  ?.addEventListener("input", ()=>{ const t=TRIM[trimSlotSel.value]; t.end=parseFloat(trimEnd.value); if(t.end<=t.start){ t.start=Math.max(0,t.end-0.05); trimStart.value=t.start; }});
-    trimRev  ?.addEventListener("change",()=>{ const t=TRIM[trimSlotSel.value]; t.rev=!!trimRev.checked; });
-    syncTrimUI();
 
     const TRACK_KEYS = ['z','x','c','v'];
     const tracks = TRACK_KEYS.map((k,i)=>({ key:k, part:null, enabled:false, loopEnd:0, events:[], idx:i, addedAt:0 }));
@@ -299,50 +187,6 @@
     const snapshotCtx = ()=> ({ key:state.key, mode:state.mode, quality:state.quality, inversion:state.inversion, baseOct:state.baseOct, presetType:state.presetType });
     function renderTracks(){ ui.tracks.innerHTML=""; tracks.forEach((t,i)=>{ const div=document.createElement("div"); div.className="track"; const st=t.enabled?"on":"off"; div.innerHTML=`<div class="hdr"><div>Track ${i+1} <span class="kbd">${t.key}</span></div><div class="tag ${st}">${t.enabled?"ON":"OFF"}</div></div><div class="help">${t.part?`events: ${t.events.length}, loop: ${(master.loopLen||t.loopEnd).toFixed(2)}s`:`empty`}</div><div class="delHint ${(!t.enabled && t.part) ? "show": ""}">OFF상태에서 ${t.key.toUpperCase()} 2초 길게 → 삭제</div>`; ui.tracks.appendChild(div); }); }
     renderTracks();
-
-    // === Step Repeat Grid (16 steps @ 16n) ===
-    const sgGrid = document.getElementById("sgGrid");
-    const sgTargetSel = document.getElementById("sgTarget");
-    const SG = { steps: Array(16).fill(false), target:"snr", seq:null };
-    function buildSgUI(){
-      if(!sgGrid) return;
-      sgGrid.innerHTML = "";
-      for(let i=0;i<16;i++){
-        const b=document.createElement("button");
-        b.className="sg-cell"; b.textContent=String(i+1);
-        b.addEventListener("click", ()=>{
-          SG.steps[i]=!SG.steps[i];
-          b.classList.toggle("on", SG.steps[i]);
-          rebuildSgSeq();
-        });
-        sgGrid.appendChild(b);
-      }
-    }
-    function rebuildSgSeq(){
-      // dispose
-      if(SG.seq){ try{ SG.seq.stop(0); SG.seq.dispose(); }catch{} SG.seq=null; }
-      // 빈 그리드면 종료
-      if(!SG.steps.some(Boolean)) return;
-      ensureTransport();
-      const onSteps = SG.steps.map((v,i)=> v ? i : -1).filter(i=> i>=0);
-      SG.seq = new Tone.Sequence((time, stepIdx)=>{
-        const id = SG.target;
-        // open hat choke if needed
-        if (id==="cht"){
-          hatOpenGate.gain.cancelScheduledValues(time);
-          hatOpenGate.gain.setValueAtTime(hatOpenGate.gain.value, time);
-          hatOpenGate.gain.linearRampToValueAtTime(0, time + 0.005);
-          hatOpenGate.gain.linearRampToValueAtTime(1, time + 0.08);
-        }
-        if (id==="ohat") triggerWithTrim(ohPlayer, "ohat", time);
-        else triggerWithTrim(samplers[id], id, time);
-      }, onSteps, "16n");
-      SG.seq.loop = true;
-      const startAt = master.phase0 ?? 0;
-      SG.seq.start(startAt);
-    }
-    buildSgUI();
-    sgTargetSel?.addEventListener("change", ()=>{ SG.target = sgTargetSel.value; rebuildSgSeq(); });
     function pushOverdubEvent(slotId, tAbs, dur, ctx){ const L = master.loopLen; const start = ((tAbs % L)+L)%L; let remain = dur, curStart = start; while (remain > 0){ const room = L - curStart; const d = Math.min(remain, room); rec.events.push({ time: curStart, slotId, dur: d, ctx }); remain -= d; curStart = 0; } }
     function startRec(){ rec.active=true; rec.events=[]; rec.activeDown={}; rec.startAt=Tone.now(); ui.recName.textContent="REC"; ui.recDot.classList.add("on"); ensureTransport(); }
     function computePhaseAnchor(loopLen){ const now = Tone.Transport.seconds; const eps = 0.02; return Math.ceil((now+eps)/loopLen)*loopLen; }
@@ -363,78 +207,8 @@
 
     function toggleRec(){ if(!rec.active) startRec(); else stopRec(); }
     let spacePressed = false;
-    // OP-KO punch-in handler (drum preset에서만 반응)
-    function koFxDown(k){
-      if (state.presetType !== "drum") return false;
-      const now = Tone.now();
-      if (k==="a"||k==="A"){ fxStutter.wet.rampTo(0.8, 0.02); return true; }       // STUT
-      if (k==="s"||k==="S"){ fxGate.wet.rampTo(0.8, 0.02);    return true; }       // GATE
-      if (k==="d"||k==="D"){ fxTapeRP.pitch = -12; setTimeout(()=>{ fxTapeRP.pitch=0; }, 220); return true; } // TAPE one-shot
-      if (k==="f"||k==="F"){ fxWow.wet.rampTo(0.7, 0.02);     return true; }       // WOW
-      if (k==="g"||k==="G"){ fxBits.bits = 4; /* wet없으면 그대로 */ return true; } // BITS
-      if (k==="h"||k==="H"){ fxLP.frequency.rampTo(2400, 0.05); return true; }     // LPF sweep down
-      if (k==="j"||k==="J"){ fxRev.wet.rampTo(0.35, 0.02);    return true; }       // REV
-      if (k==="k"||k==="K"){ // PUMP: 순간 전체 드럼 볼륨 살짝 내렸다 복귀(킥 유사)
-        drumBus.gain.cancelScheduledValues(now);
-        drumBus.gain.setValueAtTime(drumBus.gain.value, now);
-        drumBus.gain.linearRampToValueAtTime(0.75, now+0.02);
-        drumBus.gain.linearRampToValueAtTime(1.0,  now+0.20);
-        return true;
-      }
-      return false;
-    }
-    function koFxUp(k){
-      if (state.presetType !== "drum") return false;
-      if (k==="a"||k==="A"){ fxStutter.wet.rampTo(0, 0.05); return true; }
-      if (k==="s"||k==="S"){ fxGate.wet.rampTo(0, 0.05);    return true; }
-      if (k==="f"||k==="F"){ fxWow.wet.rampTo(0, 0.05);     return true; }
-      if (k==="g"||k==="G"){ fxBits.bits = 8; return true; }
-      if (k==="h"||k==="H"){ fxLP.frequency.rampTo(12000, 0.2); return true; }
-      if (k==="j"||k==="J"){ fxRev.wet.rampTo(0, 0.15);     return true; }
-      return false;
-    }
-
-    window.addEventListener("keydown",(e)=>{
-      const k = e.key;
-      if (e.code === "Space" || k === " " || k === "Spacebar") { e.preventDefault(); if (!spacePressed) spacePressed = true; return; }
-      if (k.startsWith("Arrow")) e.preventDefault();
-      if(e.repeat) return;
-
-      if(TRACK_KEYS.includes(k)){ handleTrackKeyDown(k); return; }
-      if(koFxDown(k)){ // 드럼 FX 키는 여기서 소비
-        const fxBtn = ({a:"stut",s:"gate",d:"tape",f:"wow",g:"bits",h:"lpf",j:"rev",k:"pump"})[k.toLowerCase()];
-        fxBtn && document.querySelector(`[data-fx="${fxBtn}"]`)?.classList.add("on");
-        return;
-      }
-
-      const dir = ({ u:"NW",i:"N",o:"NE",j:"W",l:"E",m:"SW", ",":"S", ".":"SE",
-                     U:"NW",I:"N",O:"NE",J:"W",L:"E",M:"SW", "<":"S", ">":"SE" })[k];
-      if(dir){ applyPreset(dir); return; }
-
-      const slotId = KEY_TO_SLOT[k];
-      if(slotId){ e.preventDefault(); pressSlot(slotId, k); return; }
-
-      if(k==="ArrowLeft"){ transpose(e.shiftKey?-12:-1); }
-      else if(k==="ArrowRight"){ transpose(e.shiftKey?+12:+1); }
-      else if(k==="ArrowUp"){ cycleInv(); }
-      else if(k==="ArrowDown"){ toggleQuality(); }
-      else if(k==="m"||k==="M"){ toggleMode(); }
-      else if(k===">"||k==="."){ shiftOct(+1); }
-      else if(k===","||k==="<"){ shiftOct(-1); }
-    });
-
-    window.addEventListener("keyup",(e)=>{
-      const k = e.key;
-      if (e.code === "Space" || k === " " || k === "Spacebar") { if (spacePressed) toggleRec(); spacePressed = false; e.preventDefault(); return; }
-      if(TRACK_KEYS.includes(k)){ handleTrackKeyUp(k); return; }
-      if(koFxUp(k)){
-        const fxBtn = ({a:"stut",s:"gate",f:"wow",g:"bits",h:"lpf",j:"rev"})[k.toLowerCase()];
-        fxBtn && document.querySelector(`[data-fx="${fxBtn}"]`)?.classList.remove("on");
-        return;
-      }
-      const slotId = KEY_TO_SLOT[k];
-      if(slotId) releaseKey(k);
-    });
+    window.addEventListener("keydown",(e)=>{ const k = e.key; if (e.code === "Space" || k === " " || k === "Spacebar") { e.preventDefault(); if (!spacePressed) spacePressed = true; return; } if (k.startsWith("Arrow")) e.preventDefault(); if(e.repeat) return; if(TRACK_KEYS.includes(k)){ handleTrackKeyDown(k); return; } const dir = ({ u:"NW",i:"N",o:"NE",j:"W",l:"E",m:"SW", ",":"S", ".":"SE", U:"NW",I:"N",O:"NE",J:"W",L:"E",M:"SW", "<":"S", ">":"SE" })[k]; if(dir){ applyPreset(dir); return; } const slotId = KEY_TO_SLOT[k]; if(slotId){ e.preventDefault(); pressSlot(slotId, k); return; } if(k==="ArrowLeft"){ transpose(e.shiftKey?-12:-1); } else if(k==="ArrowRight"){ transpose(e.shiftKey?+12:+1); } else if(k==="ArrowUp"){ cycleInv(); } else if(k==="ArrowDown"){ toggleQuality(); } else if(k==="m"||k==="M"){ toggleMode(); } else if(k===">"||k==="."){ shiftOct(+1); } else if(k===","||k==="<"){ shiftOct(-1); } });
+    window.addEventListener("keyup",(e)=>{ const k = e.key; if (e.code === "Space" || k === " " || k === "Spacebar") { if (spacePressed) toggleRec(); spacePressed = false; e.preventDefault(); return; } if(TRACK_KEYS.includes(k)){ handleTrackKeyUp(k); return; } const slotId = KEY_TO_SLOT[k]; if(slotId) releaseKey(k); });
     window.addEventListener("blur",()=>{ for(const k of [...held.keys()]) releaseKey(k); spacePressed=false; });
   };
 

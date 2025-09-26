@@ -56,104 +56,14 @@
       </div>
 
       <div class="card opko" style="margin-top:12px">
-        <div class="opko-hdr">OP-KO Drum</div>
+        <div class="opko-hdr">Drum Pads</div>
         <div class="opko-grid">
-          <button class="ko-pad" data-ko="kck">KICK</button>
-          <button class="ko-pad" data-ko="snr">SNARE</button>
-          <button class="ko-pad" data-ko="cht">CH-HAT</button>
-          <button class="ko-pad" data-ko="ohat">OH-HAT</button>
-          <button class="ko-pad" data-ko="clp">CLAP</button>
-          <button class="ko-pad" data-ko="tom">TOM</button>
-          <button class="ko-pad" data-ko="rid">RIDE</button>
-          <button class="ko-pad" data-ko="fx">FX</button>
-        </div>
-        <!-- Bank / Sample Trim -->
-        <div class="opko-row">
-          <div class="bank">
-            <span class="help">BANK</span>
-            <div class="bank-btns">
-              <button class="bank-btn" data-bank="1">1</button>
-              <button class="bank-btn" data-bank="2">2</button>
-              <button class="bank-btn" data-bank="3">3</button>
-              <button class="bank-btn" data-bank="4">4</button>
-            </div>
-            <span class="help">숫자키 1–4 지원</span>
-          </div>
-          <div class="trim">
-            <label>Slot
-              <select id="trimSlot">
-                <option value="kck">KICK</option>
-                <option value="snr">SNARE</option>
-                <option value="cht">CH-HAT</option>
-                <option value="ohat">OH-HAT</option>
-                <option value="clp">CLAP</option>
-                <option value="tom">TOM</option>
-                <option value="rid">RIDE</option>
-              </select>
-            </label>
-            <label>Start <input id="trimStart" type="range" min="0" max="0.95" step="0.01"></label>
-            <label>End <input id="trimEnd" type="range" min="0.05" max="1" step="0.01" value="1"></label>
-            <label class="rev"><input id="trimRev" type="checkbox"> Reverse</label>
-          </div>
-        </div>
-
-        <!-- FX knobs -->
-        <div class="opko-fxctrl">
-          <div class="knob">
-            <label>STUT</label>
-            <input class="kn stut" type="range" min="0" max="1" step="0.01" value="0">
-          </div>
-          <div class="knob">
-            <label>GATE</label>
-            <input class="kn gate" type="range" min="0" max="1" step="0.01" value="0">
-          </div>
-          <div class="knob">
-            <label>WOW</label>
-            <input class="kn wow"  type="range" min="0" max="1" step="0.01" value="0">
-          </div>
-          <div class="knob">
-            <label>BITS</label>
-            <input class="kn bits" type="range" min="4" max="12" step="1" value="8">
-          </div>
-          <div class="knob">
-            <label>LPF</label>
-            <input class="kn lpf"  type="range" min="800" max="12000" step="50" value="12000">
-          </div>
-          <div class="knob">
-            <label>REV</label>
-            <input class="kn rev"  type="range" min="0" max="0.5" step="0.01" value="0">
-          </div>
-        </div>
-
-        <!-- Step Repeat Grid -->
-        <div class="step-grid">
-          <div class="sg-row">
-            <span class="help">STEP REPEAT (16)</span>
-            <select id="sgTarget">
-              <option value="snr">SNARE</option>
-              <option value="cht">CH-HAT</option>
-              <option value="ohat">OH-HAT</option>
-              <option value="clp">CLAP</option>
-              <option value="kck">KICK</option>
-            </select>
-            <span class="help">분해능: 16분(루프/트랜스포트 기준)</span>
-          </div>
-          <div class="sg-grid" id="sgGrid">
-            <!-- JS가 16 버튼 생성 -->
-          </div>
-        </div>
-        <div class="opko-fx">
-          <div class="fx-row">
-            <button class="fx" data-fx="stut" title="Stutter (A)">STUT</button>
-            <button class="fx" data-fx="gate" title="Gater (S)">GATE</button>
-            <button class="fx" data-fx="tape" title="Tape-Stop (D)">TAPE</button>
-            <button class="fx" data-fx="wow"  title="Wow/Flutter (F)">WOW</button>
-            <button class="fx" data-fx="bits" title="Bit-Crush (G)">BITS</button>
-            <button class="fx" data-fx="lpf"  title="LP Sweep (H)">LPF</button>
-            <button class="fx" data-fx="rev"  title="Short Verb (J)">REV</button>
-            <button class="fx" data-fx="pump" title="Sidechain Pump (K)">PUMP</button>
-          </div>
-          <div class="help" style="margin-top:6px">드럼 프리셋(콤마 <span class="kbd">,</span>) 상태에서 패드/FX 사용 · 단축키: A S D F G H J K</div>
+          <button class="ko-pad" data-ko="kick">KICK</button>
+          <button class="ko-pad" data-ko="snare">SNARE</button>
+          <button class="ko-pad" data-ko="hat">HAT</button>
+          <button class="ko-pad" data-ko="crunch">CRUNCH</button>
+          <button class="ko-pad" data-ko="clap">CLAP</button>
+          <button class="ko-pad" data-ko="bell">BELL</button>
         </div>
       </div>
 

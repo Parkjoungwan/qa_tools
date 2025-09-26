@@ -24,7 +24,7 @@ body{ margin:0; overflow:hidden;
 
 /* OP-KO section */
 .opko .opko-hdr{ font-weight:800; color:#c7d6e7; margin-bottom:8px; letter-spacing:.5px }
-.opko-grid{ display:grid; grid-template-columns: repeat(4,1fr); gap:8px; }
+.opko-grid{ display:grid; grid-template-columns: repeat(3,1fr); gap:8px; }
 .ko-pad{ background:#0f1620; color:#e6eef7; border:1px solid var(--border); border-radius:12px; padding:10px 8px; letter-spacing:.6px; cursor:pointer; transition:transform .06s, box-shadow .12s, border-color .12s}
 .ko-pad:active,.ko-pad.active{ transform:translateY(-2px); border-color:#67b3ff; box-shadow:0 0 0 1px rgba(103,179,255,.35) inset }
 .opko-fx{ margin-top:10px; }
