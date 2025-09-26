@@ -1,0 +1,82 @@
+
+:root { --bg:#0b0f14; --fg:#e6eef7; --sub:#9fb3c8; --acc:#63b3ed; --card:#121821; --border:#1f2a37; --red:#ff6b6b; --green:#2ecc71;}
+html,body{height:100%}
+body{ margin:0; overflow:hidden;
+  font-family:ui-sans-serif,system-ui,Apple SD Gothic Neo,Segoe UI,Roboto,Helvetica,Arial;
+  background:linear-gradient(180deg,#0b0f14,#0e141c 60%,#0b0f14); color:var(--fg);
+  display:flex; align-items:center; justify-content:center;}
+.wrap{max-width:1100px; width:min(94vw,1120px);}
+.topbar{display:flex; justify-content:flex-end; align-items:center; margin-bottom:10px; gap:12px;}
+.menuBtn{display:none; align-items:center; gap:8px; background:#0f1620; border:1px solid var(--border); color:#d7e3f1; padding:8px 10px; border-radius:10px; cursor:pointer;}
+.menuBtn:active{transform:translateY(1px)}
+.panelWrap{display:grid; grid-template-columns: 1.2fr 1fr; gap:16px;}
+.panel{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px}
+.pill{background:#0e1622; border:1px solid var(--border); border-radius:999px; padding:8px 12px; font-size:13px; color:#d7e3f1;}
+.pill b{color:var(--acc)}
+.card{background:var(--card); border:1px solid var(--border); border-radius:16px; padding:14px;}
+.pianoCard{margin-top:0}
+/* Seven Pads layout */
+.pads{ display:grid; grid-template-columns: repeat(7,1fr); gap:10px; padding:16px; background:#0f1620; border:1px solid var(--border); border-radius:14px;}
+.pad{ background:linear-gradient(#eef2f5,#cfd7e3); color:#111; border:1px solid #b4c1d0; border-radius:10px; padding:14px 8px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; cursor:pointer; transition:transform .06s, box-shadow .12s;}
+.pad:active,.pad.active{ transform:translateY(-3px); box-shadow:0 10px 22px rgba(99,179,237,.25) }
+.kcap{ font-weight:800 }
+.lab{ font-size:11px; opacity:.8 }
+
+/* OP-KO section */
+.opko .opko-hdr{ font-weight:800; color:#c7d6e7; margin-bottom:8px; letter-spacing:.5px }
+.opko-grid{ display:grid; grid-template-columns: repeat(4,1fr); gap:8px; }
+.ko-pad{ background:#0f1620; color:#e6eef7; border:1px solid var(--border); border-radius:12px; padding:10px 8px; letter-spacing:.6px; cursor:pointer; transition:transform .06s, box-shadow .12s, border-color .12s}
+.ko-pad:active,.ko-pad.active{ transform:translateY(-2px); border-color:#67b3ff; box-shadow:0 0 0 1px rgba(103,179,255,.35) inset }
+.opko-fx{ margin-top:10px; }
+.fx-row{ display:grid; grid-template-columns: repeat(8,1fr); gap:6px; }
+.fx{ background:#0b111a; color:#d7e3f1; border:1px dashed #2a3747; border-radius:10px; padding:8px 6px; font-size:12px; cursor:pointer; transition:transform .06s, box-shadow .12s, border-color .12s }
+.fx:active,.fx.on{ transform:translateY(-1px); border-color:#67b3ff; box-shadow:0 0 0 1px rgba(103,179,255,.35) inset }
+
+/* Bank & Trim */
+.opko-row{ display:flex; gap:16px; margin-top:10px; flex-wrap:wrap }
+.bank{ display:flex; align-items:center; gap:10px }
+.bank-btns{ display:flex; gap:6px }
+.bank-btn{ background:#0f1620; color:#e6eef7; border:1px solid var(--border); border-radius:8px; padding:6px 10px; cursor:pointer }
+.bank-btn.active{ border-color:#67b3ff; box-shadow:0 0 0 1px rgba(103,179,255,.35) inset }
+.trim{ display:flex; align-items:center; gap:10px; flex-wrap:wrap }
+.trim label{ display:flex; align-items:center; gap:6px; background:#0b111a; border:1px solid var(--border); border-radius:8px; padding:6px 8px; color:#d7e3f1 }
+.trim select,.trim input[type="range"]{ accent-color:#67b3ff }
+.trim .rev{ padding:6px 10px; }
+
+/* FX knobs */
+.opko-fxctrl{ display:grid; grid-template-columns: repeat(6,1fr); gap:10px; margin-top:10px }
+.knob{ background:#0b111a; border:1px solid var(--border); border-radius:10px; padding:8px }
+.knob label{ display:block; font-size:12px; color:#9fb3c8; margin-bottom:4px }
+.kn{ width:100% }
+
+/* Step Repeat Grid */
+.step-grid{ margin-top:10px }
+.sg-row{ display:flex; align-items:center; gap:10px; margin-bottom:6px }
+.sg-grid{ display:grid; grid-template-columns: repeat(16,1fr); gap:4px }
+.sg-cell{ background:#0f1620; border:1px solid var(--border); border-radius:6px; padding:8px 0; text-align:center; font-size:11px; color:#9fb3c8; cursor:pointer }
+.sg-cell.on{ border-color:#67b3ff; color:#e6eef7; box-shadow:0 0 0 1px rgba(103,179,255,.35) inset }
+.help{color:#b9c9da; font-size:13px; line-height:1.55}
+.kbd{font-family:ui-monospace,Menlo,Consolas,monospace; background:#0c1320; border:1px solid var(--border); border-radius:6px; padding:0 5px}
+.compass{display:grid; grid-template-columns: repeat(3,1fr); gap:8px; user-select:none;}
+.dir{background:#0f1620; border:1px solid var(--border); border-radius:12px; padding:10px 8px; text-align:center; cursor:pointer; transition:transform .06s, box-shadow .12s, border-color .12s;}
+.dir.active{border-color:#67b3ff; box-shadow:0 0 0 1px rgba(103,179,255,.45) inset}
+.tracks{display:grid; grid-template-columns: repeat(4,1fr); gap:10px; margin-top:10px;}
+.track{background:#0f1620; border:1px solid var(--border); border-radius:12px; padding:10px;}
+.track .hdr{display:flex; align-items:center; justify-content:space-between; font-size:13px; margin-bottom:8px}
+.tag{padding:2px 8px; border-radius:999px; border:1px solid var(--border); background:#0c1320}
+.on{color:#c8f7dc; border-color:#1f6c43; background:#103221}
+.off{color:#ffb3b3; border-color:#6c2a2a; background:#2a1010}
+.delHint{font-size:11px; color:#ffb3b3; opacity:.85; margin-top:6px; display:none}
+.delHint.show{display:block}
+.recInd{display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--red); opacity:0; transform:translateY(1px)}
+.recInd.on{opacity:1; box-shadow:0 0 8px var(--red)}
+@media (max-width: 900px), (max-height: 620px){
+  .menuBtn{ display:inline-flex; }
+  .panelWrap{
+    position:fixed; top:0; right:0; bottom:auto; left:auto; transform:translateY(-12px);
+    display:block; width:min(88vw,420px); max-height:70vh; overflow:auto; padding:12px;
+    background:rgba(8,12,18,.92); border:1px solid var(--border); border-radius:14px; box-shadow:0 14px 40px rgba(0,0,0,.45);
+    opacity:0; pointer-events:none; transition:opacity .15s ease;
+  }
+  .panelWrap.open{ opacity:1; pointer-events:auto; }
+}

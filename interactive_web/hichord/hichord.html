@@ -5,82 +5,25 @@
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>HiChord</title>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/15.3.3/Tone.js"></script>
-  <style>
-    :root { --bg:#0b0f14; --fg:#e6eef7; --sub:#9fb3c8; --acc:#63b3ed; --card:#121821; --border:#1f2a37; --red:#ff6b6b; --green:#2ecc71;}
-    html,body{height:100%}
-    body{ margin:0; overflow:hidden;
-      font-family:ui-sans-serif,system-ui,Apple SD Gothic Neo,Segoe UI,Roboto,Helvetica,Arial;
-      background:linear-gradient(180deg,#0b0f14,#0e141c 60%,#0b0f14); color:var(--fg);
-      display:flex; align-items:center; justify-content:center;}
-    .wrap{max-width:1100px; width:min(94vw,1120px);}
-    .topbar{display:flex; justify-content:flex-end; align-items:center; margin-bottom:10px;}
-    .menuBtn{display:none; align-items:center; gap:8px; background:#0f1620; border:1px solid var(--border); color:#d7e3f1; padding:8px 10px; border-radius:10px; cursor:pointer;}
-    .menuBtn:active{transform:translateY(1px)}
-    .panelWrap{display:grid; grid-template-columns: 1.2fr 1fr; gap:16px;}
-    .panel{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px}
-    .pill{background:#0e1622; border:1px solid var(--border); border-radius:999px; padding:8px 12px; font-size:13px; color:#d7e3f1;}
-    .pill b{color:var(--acc)}
-    .card{background:var(--card); border:1px solid var(--border); border-radius:16px; padding:14px;}
-    .pianoCard{margin-top:0}
-    .piano{position:relative; height:180px; padding:16px; background:#0f1620; border:1px solid var(--border); border-radius:14px;}
-    .whites{display:grid; grid-template-columns: repeat(4,1fr); gap:10px; height:100%;}
-    .white{background:linear-gradient(#eef2f5,#cfd7e3); color:#111; border:1px solid #b4c1d0; border-radius:8px; display:flex; align-items:flex-end; justify-content:center; position:relative; padding-bottom:10px; transition:transform .06s, box-shadow .12s;}
-    .white.active{transform:translateY(-3px); box-shadow:0 10px 22px rgba(99,179,237,.25)}
-    .blackRow{position:absolute; top:16px; left:16px; right:16px; height:72px; pointer-events:none;}
-    .black{position:absolute; width:16%; height:100%; background:linear-gradient(#1a1f28,#090c11); border:1px solid #202734; border-radius:6px; color:#dfe8f6; display:flex; align-items:flex-end; justify-content:center; padding-bottom:6px; pointer-events:auto; cursor:pointer; transition:transform .06s, box-shadow .12s;}
-    .black.active{transform:translateY(-2px); box-shadow:0 8px 18px rgba(99,179,237,.25)}
-    .b01{ left:calc(12.5% + 10px); width:17%;}
-    .b12{ left:calc(37.5% + 5px); width:17%;}
-    .b23{ left:calc(62.5% + 0px); width:17%;}
-    .kcap{font-weight:800}
-    .lab{font-size:11px; opacity:.8; margin-top:4px}
-    .help{color:#b9c9da; font-size:13px; line-height:1.55}
-    .kbd{font-family:ui-monospace,Menlo,Consolas,monospace; background:#0c1320; border:1px solid var(--border); border-radius:6px; padding:0 5px}
-    .compass{display:grid; grid-template-columns: repeat(3,1fr); gap:8px; user-select:none;}
-    .dir{background:#0f1620; border:1px solid var(--border); border-radius:12px; padding:10px 8px; text-align:center; cursor:pointer; transition:transform .06s, box-shadow .12s, border-color .12s;}
-    .dir.active{border-color:#67b3ff; box-shadow:0 0 0 1px rgba(103,179,255,.45) inset}
-    .tracks{display:grid; grid-template-columns: repeat(4,1fr); gap:10px; margin-top:10px;}
-    .track{background:#0f1620; border:1px solid var(--border); border-radius:12px; padding:10px;}
-    .track .hdr{display:flex; align-items:center; justify-content:space-between; font-size:13px; margin-bottom:8px}
-    .tag{padding:2px 8px; border-radius:999px; border:1px solid var(--border); background:#0c1320}
-    .on{color:#c8f7dc; border-color:#1f6c43; background:#103221}
-    .off{color:#ffb3b3; border-color:#6c2a2a; background:#2a1010}
-    .delHint{font-size:11px; color:#ffb3b3; opacity:.85; margin-top:6px; display:none}
-    .delHint.show{display:block}
-    .recInd{display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--red); margin-left:6px; opacity:0; transform:translateY(1px)}
-    .recInd.on{opacity:1; box-shadow:0 0 8px var(--red)}
-    @media (max-width: 900px), (max-height: 620px){
-      .menuBtn{ display:inline-flex; }
-      .panelWrap{
-        position:fixed; top:0; right:0; bottom:auto; left:auto; transform:translateY(-12px);
-        display:block; width:min(88vw,420px); max-height:70vh; overflow:auto; padding:12px;
-        background:rgba(8,12,18,.92); border:1px solid var(--border); border-radius:14px; box-shadow:0 14px 40px rgba(0,0,0,.45);
-        opacity:0; pointer-events:none; transition:opacity .15s ease;
-      }
-      .panelWrap.open{ opacity:1; pointer-events:auto; }
-    }
-  </style>
+  <link rel="stylesheet" href="hichord.css">
 </head>
 <body>
   <div class="wrap">
     <div class="topbar">
+      <span id="recDot" class="recInd"></span>
       <button id="menuBtn" class="menuBtn" aria-expanded="false" aria-controls="panelWrap" title="메뉴 열기/닫기">≡ 메뉴</button>
     </div>
 
-    <!-- Piano only (always visible) -->
+    <!-- 7 Pads -->
     <div class="card pianoCard">
-      <div class="piano">
-        <div class="whites">
-          <div class="white" data-slot="W0"><div><div class="kcap">q</div><div class="lab">I</div></div></div>
-          <div class="white" data-slot="W1"><div><div class="kcap">w</div><div class="lab">ii</div></div></div>
-          <div class="white" data-slot="W3"><div><div class="kcap">e</div><div class="lab">IV</div></div></div>
-          <div class="white" data-slot="W4"><div><div class="kcap">r</div><div class="lab">V</div></div></div>
-        </div>
-        <div class="blackRow">
-          <div class="black b01" data-slot="B01"><div><div class="kcap">2</div><div class="lab">♭II</div></div></div>
-          <div class="black b12" data-slot="B12"><div><div class="kcap">3</div><div class="lab">♭III</div></div></div>
-          <div class="black b23" data-slot="B23"><div><div class="kcap">4</div><div class="lab">♯IV</div></div></div>
-        </div>
+      <div class="pads" aria-label="Seven Chord Pads">
+        <button class="pad" data-slot="K0"><div class="kcap">q</div><div class="lab">I</div></button>
+        <button class="pad" data-slot="K1"><div class="kcap">w</div><div class="lab">ii</div></button>
+        <button class="pad" data-slot="K2"><div class="kcap">e</div><div class="lab">IV</div></button>
+        <button class="pad" data-slot="K3"><div class="kcap">r</div><div class="lab">V</div></button>
+        <button class="pad" data-slot="K4"><div class="kcap">2</div><div class="lab">♭II</div></button>
+        <button class="pad" data-slot="K5"><div class="kcap">3</div><div class="lab">♭III</div></button>
+        <button class="pad" data-slot="K6"><div class="kcap">4</div><div class="lab">♯IV</div></button>
       </div>
     </div>
 
@@ -94,7 +37,7 @@
         <div class="pill">Octave: <b id="octName">4</b></div>
         <div class="pill">Preset: <b id="presetName">C</b></div>
         <div class="pill">BPM: <b id="bpmName">100</b></div>
-        <div class="pill">REC: <b id="recName">Idle</b><span id="recDot" class="recInd"></span></div>
+        <div class="pill">REC: <b id="recName">Idle</b></div>
       </div>
 
       <div class="card">
@@ -107,8 +50,110 @@
           <div class="dir active" data-dir="C"><div>● C</div><div class="help">현재</div></div>
           <div class="dir" data-dir="E"><div>→ E</div><div class="help">l</div></div>
           <div class="dir" data-dir="SW"><div>↙ SW</div><div class="help">m</div></div>
-          <div class="dir" data-dir="S"><div>↓ S</div><div class="help">,</div></div>
+          <div class="dir" data-dir="S"><div>↓ S</div><div class="help">, (Drum)</div></div>
           <div class="dir" data-dir="SE"><div>↘ SE</div><div class="help">.</div></div>
+        </div>
+      </div>
+
+      <div class="card opko" style="margin-top:12px">
+        <div class="opko-hdr">OP-KO Drum</div>
+        <div class="opko-grid">
+          <button class="ko-pad" data-ko="kck">KICK</button>
+          <button class="ko-pad" data-ko="snr">SNARE</button>
+          <button class="ko-pad" data-ko="cht">CH-HAT</button>
+          <button class="ko-pad" data-ko="ohat">OH-HAT</button>
+          <button class="ko-pad" data-ko="clp">CLAP</button>
+          <button class="ko-pad" data-ko="tom">TOM</button>
+          <button class="ko-pad" data-ko="rid">RIDE</button>
+          <button class="ko-pad" data-ko="fx">FX</button>
+        </div>
+        <!-- Bank / Sample Trim -->
+        <div class="opko-row">
+          <div class="bank">
+            <span class="help">BANK</span>
+            <div class="bank-btns">
+              <button class="bank-btn" data-bank="1">1</button>
+              <button class="bank-btn" data-bank="2">2</button>
+              <button class="bank-btn" data-bank="3">3</button>
+              <button class="bank-btn" data-bank="4">4</button>
+            </div>
+            <span class="help">숫자키 1–4 지원</span>
+          </div>
+          <div class="trim">
+            <label>Slot
+              <select id="trimSlot">
+                <option value="kck">KICK</option>
+                <option value="snr">SNARE</option>
+                <option value="cht">CH-HAT</option>
+                <option value="ohat">OH-HAT</option>
+                <option value="clp">CLAP</option>
+                <option value="tom">TOM</option>
+                <option value="rid">RIDE</option>
+              </select>
+            </label>
+            <label>Start <input id="trimStart" type="range" min="0" max="0.95" step="0.01"></label>
+            <label>End <input id="trimEnd" type="range" min="0.05" max="1" step="0.01" value="1"></label>
+            <label class="rev"><input id="trimRev" type="checkbox"> Reverse</label>
+          </div>
+        </div>
+
+        <!-- FX knobs -->
+        <div class="opko-fxctrl">
+          <div class="knob">
+            <label>STUT</label>
+            <input class="kn stut" type="range" min="0" max="1" step="0.01" value="0">
+          </div>
+          <div class="knob">
+            <label>GATE</label>
+            <input class="kn gate" type="range" min="0" max="1" step="0.01" value="0">
+          </div>
+          <div class="knob">
+            <label>WOW</label>
+            <input class="kn wow"  type="range" min="0" max="1" step="0.01" value="0">
+          </div>
+          <div class="knob">
+            <label>BITS</label>
+            <input class="kn bits" type="range" min="4" max="12" step="1" value="8">
+          </div>
+          <div class="knob">
+            <label>LPF</label>
+            <input class="kn lpf"  type="range" min="800" max="12000" step="50" value="12000">
+          </div>
+          <div class="knob">
+            <label>REV</label>
+            <input class="kn rev"  type="range" min="0" max="0.5" step="0.01" value="0">
+          </div>
+        </div>
+
+        <!-- Step Repeat Grid -->
+        <div class="step-grid">
+          <div class="sg-row">
+            <span class="help">STEP REPEAT (16)</span>
+            <select id="sgTarget">
+              <option value="snr">SNARE</option>
+              <option value="cht">CH-HAT</option>
+              <option value="ohat">OH-HAT</option>
+              <option value="clp">CLAP</option>
+              <option value="kck">KICK</option>
+            </select>
+            <span class="help">분해능: 16분(루프/트랜스포트 기준)</span>
+          </div>
+          <div class="sg-grid" id="sgGrid">
+            <!-- JS가 16 버튼 생성 -->
+          </div>
+        </div>
+        <div class="opko-fx">
+          <div class="fx-row">
+            <button class="fx" data-fx="stut" title="Stutter (A)">STUT</button>
+            <button class="fx" data-fx="gate" title="Gater (S)">GATE</button>
+            <button class="fx" data-fx="tape" title="Tape-Stop (D)">TAPE</button>
+            <button class="fx" data-fx="wow"  title="Wow/Flutter (F)">WOW</button>
+            <button class="fx" data-fx="bits" title="Bit-Crush (G)">BITS</button>
+            <button class="fx" data-fx="lpf"  title="LP Sweep (H)">LPF</button>
+            <button class="fx" data-fx="rev"  title="Short Verb (J)">REV</button>
+            <button class="fx" data-fx="pump" title="Sidechain Pump (K)">PUMP</button>
+          </div>
+          <div class="help" style="margin-top:6px">드럼 프리셋(콤마 <span class="kbd">,</span>) 상태에서 패드/FX 사용 · 단축키: A S D F G H J K</div>
         </div>
       </div>
 
@@ -119,355 +164,6 @@
     </div>
   </div>
 
-  <script>
-    function $(sel){ return document.querySelector(sel); }
-
-    const NOTE_NAMES = ["C","C#","D","D#","E","F","F#","G","G#","A","A#","B"];
-    const wrap12 = (n)=>((n%12)+12)%12;
-    const SCALE = { Major:[0,2,4,5,7,9,11], Minor:[0,2,3,5,7,8,10] };
-
-    const WHITE_DEGREES = { W0:0, W1:1, W3:3, W4:4 };
-    const BLACK_OFFSETS = { B01:1, B12:3, B23:6 };
-
-    const TABLE = {
-      Major:{ Triad:{0:[0,4,7],1:[0,3,7],3:[0,4,7],4:[0,4,7]},
-              Seventh:{0:[0,4,7,11],1:[0,3,7,10],3:[0,4,7,11],4:[0,4,7,10]} },
-      Minor:{ Triad:{0:[0,3,7],1:[0,2,7],3:[0,3,7],4:[0,4,7]},
-              Seventh:{0:[0,3,7,10],1:[0,3,6,10],3:[0,3,7,10],4:[0,4,7,10]} }
-    };
-    const BLACK_TABLE = { Triad:[0,4,7], Seventh:[0,4,7,11] };
-
-    const state = { key:0, mode:"Major", quality:"Triad", inversion:0, baseOct:4, preset:"C", bpm:100 };
-
-    const synth = new Tone.PolySynth(Tone.Synth, { maxPolyphony: 24, volume:-6 }).toDestination();
-    synth.set({ envelope:{ attack:0.01, decay:0.18, sustain:0.8, release:0.5 }, oscillator:{ type:"triangle" } });
-    Tone.Transport.bpm.value = state.bpm;
-
-    const ui = {
-      keyName: $("#keyName"), modeName: $("#modeName"), qualityName: $("#qualityName"), invName: $("#invName"),
-      octName: $("#octName"), presetName: $("#presetName"), bpmName: $("#bpmName"),
-      recName: $("#recName"), recDot: $("#recDot"), compass: $("#compass"), tracks: $("#tracks")
-    };
-    function updateStatus(){
-      ui.keyName.textContent = NOTE_NAMES[state.key];
-      ui.modeName.textContent = state.mode;
-      ui.qualityName.textContent = state.quality;
-      ui.invName.textContent = ["Root","1st","2nd","3rd"][state.inversion] ?? "Root";
-      ui.octName.textContent = String(state.baseOct);
-      ui.presetName.textContent = state.preset;
-      ui.bpmName.textContent = String(state.bpm);
-      [...ui.compass.querySelectorAll(".dir")].forEach(el=> el.classList.toggle("active", el.dataset.dir===state.preset));
-    }
-    if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", updateStatus, { once:true }); else updateStatus();
-
-    /* Responsive menu */
-    const menuBtn = $("#menuBtn");
-    const panelWrap = $("#panelWrap");
-    function setMenu(open){ panelWrap.classList.toggle("open", open); menuBtn.setAttribute("aria-expanded", String(open)); }
-    menuBtn.addEventListener("click", ()=> setMenu(!panelWrap.classList.contains("open")));
-    function autoFold(){ const small = window.innerWidth<=900 || window.innerHeight<=620; setMenu(!small); }
-    window.addEventListener("resize", autoFold); autoFold();
-
-    /* Voicing */
-    function applyInversion(semis, inv){ const L=semis.length, t=Math.min(inv,L-1); for(let i=0;i<t;i++){ const x=semis.shift(); semis.push(x+12);} }
-    function openVoicing(semis){ semis.sort((a,b)=>a-b); for(let i=0;i<semis.length-1;i++){ while(semis[i+1]-semis[i]<3){ semis[i+1]+=12; } } }
-    function drop2IfSeventh(semis){ if(semis.length===4){ semis.sort((a,b)=>a-b); semis[2]-=12; semis.sort((a,b)=>a-b); } }
-    function chordWhite(slotId, ctx){
-      const deg = WHITE_DEGREES[slotId];
-      const rootSemi = ctx.key + SCALE[ctx.mode][deg];
-      const ints = TABLE[ctx.mode][ctx.quality][deg].slice();
-      let semis = ints.map(iv => rootSemi + iv);
-      applyInversion(semis, Math.min(ctx.inversion, semis.length-1));
-      const baseMidi = 12*(ctx.baseOct+1);
-      semis = semis.map(n => n + baseMidi);
-      if(ctx.quality==="Seventh") drop2IfSeventh(semis);
-      openVoicing(semis);
-      if(semis.length===3){ const top=Math.max(...semis); semis.push(top+12); semis.sort((a,b)=>a-b); }
-      return semis.map(m => Tone.Frequency(m,"midi").toFrequency());
-    }
-    function chordBlack(slotId, ctx){
-      const off = BLACK_OFFSETS[slotId];
-      const ints = (ctx.quality==="Seventh" ? BLACK_TABLE.Seventh : BLACK_TABLE.Triad).slice();
-      let semis = ints.map(iv => (ctx.key + off) + iv);
-      applyInversion(semis, Math.min(ctx.inversion, semis.length-1));
-      const baseMidi = 12*(ctx.baseOct+1);
-      semis = semis.map(n => n + baseMidi);
-      if(ctx.quality==="Seventh") drop2IfSeventh(semis);
-      openVoicing(semis);
-      if(semis.length===3){ const top=Math.max(...semis); semis.push(top+12); semis.sort((a,b)=>a-b); }
-      return semis.map(m => Tone.Frequency(m,"midi").toFrequency());
-    }
-    function chordWithCtx(slotId, ctx){ return slotId.startsWith("W") ? chordWhite(slotId, ctx) : chordBlack(slotId, ctx); }
-    const chordNow = (slotId)=> chordWithCtx(slotId, state);
-
-    /* Piano */
-    const keyElBySlot = {
-      W0: document.querySelector('[data-slot="W0"]'),
-      W1: document.querySelector('[data-slot="W1"]'),
-      W3: document.querySelector('[data-slot="W3"]'),
-      W4: document.querySelector('[data-slot="W4"]'),
-      B01: document.querySelector('[data-slot="B01"]'),
-      B12: document.querySelector('[data-slot="B12"]'),
-      B23: document.querySelector('[data-slot="B23"]'),
-    };
-    const held = new Map();
-    const KEY_TO_SLOT = { q:"W0", w:"W1", e:"W3", r:"W4", "2":"B01", "3":"B12", "4":"B23" };
-
-    async function pressSlot(slotId, keyChar){
-      if(held.has(keyChar)) return;
-      await Tone.start();
-      const notes = chordNow(slotId);
-      synth.triggerAttack(notes);
-      held.set(keyChar, { notes, slotId });
-      keyElBySlot[slotId]?.classList.add("active");
-
-      if (rec.active && !rec.activeDown[slotId]){
-        if (master.loopLen > 0){
-          rec.activeDown[slotId] = { t0Abs: Tone.Transport.seconds, ctx: snapshotCtx() };
-        } else {
-          rec.activeDown[slotId] = { t0Rel: Tone.now()-rec.startAt, ctx: snapshotCtx() };
-        }
-      }
-    }
-    function releaseKey(keyChar){
-      const e = held.get(keyChar); if(!e) return;
-      synth.triggerRelease(e.notes);
-      keyElBySlot[e.slotId]?.classList.remove("active");
-      held.delete(keyChar);
-
-      if (rec.active && rec.activeDown[e.slotId]){
-        if (master.loopLen > 0){
-          const { t0Abs, ctx } = rec.activeDown[e.slotId];
-          const dur = Math.max(0.04, Tone.Transport.seconds - t0Abs);
-          pushOverdubEvent(e.slotId, t0Abs, dur, ctx);
-        } else {
-          const { t0Rel, ctx } = rec.activeDown[e.slotId];
-          const dur = Math.max(0.04, (Tone.now()-rec.startAt) - t0Rel);
-          rec.events.push({ time:t0Rel, slotId:e.slotId, dur, ctx });
-        }
-        delete rec.activeDown[e.slotId];
-      }
-    }
-    Object.entries(keyElBySlot).forEach(([sid, el])=>{
-      el.addEventListener("mousedown", ()=> pressSlot(sid, "mouse_"+sid));
-      el.addEventListener("mouseup",   ()=> releaseKey("mouse_"+sid));
-      el.addEventListener("mouseleave",()=> releaseKey("mouse_"+sid));
-      el.addEventListener("touchstart",(ev)=>{ ev.preventDefault(); pressSlot(sid, "touch_"+sid); }, {passive:false});
-      el.addEventListener("touchend",  ()=> releaseKey("touch_"+sid));
-    });
-    function retargetHeld(){ for(const [k,e] of held){ synth.triggerRelease(e.notes); const fresh=chordNow(e.slotId); synth.triggerAttack(fresh); e.notes=fresh; } }
-
-    /* Presets */
-    const PRESETS = {
-      N:{mode:"Major",quality:"Triad",inversion:0,baseOct:4},
-      NE:{mode:"Major",quality:"Seventh",inversion:2,baseOct:4},
-      E:{mode:"Major",quality:"Triad",inversion:1,baseOct:5},
-      SE:{mode:"Major",quality:"Seventh",inversion:1,baseOct:3},
-      S:{mode:"Minor",quality:"Triad",inversion:0,baseOct:4},
-      SW:{mode:"Minor",quality:"Seventh",inversion:1,baseOct:4},
-      W:{mode:"Minor",quality:"Triad",inversion:2,baseOct:3},
-      NW:{mode:"Minor",quality:"Seventh",inversion:2,baseOct:5}, C:{} };
-    function applyPreset(name){
-      if(name==="C") return; const p=PRESETS[name]; if(!p) return;
-      state.mode=p.mode; state.quality=p.quality; state.inversion=p.inversion; state.baseOct=p.baseOct;
-      state.preset=name; updateStatus(); retargetHeld();
-    }
-    document.querySelectorAll(".dir").forEach(el=> el.addEventListener("click", ()=>applyPreset(el.dataset.dir)));
-
-    /* Looper & phase anchor */
-    const TRACK_KEYS = ['z','x','c','v'];
-    const tracks = TRACK_KEYS.map((k,i)=>({ key:k, part:null, enabled:false, loopEnd:0, events:[], idx:i, addedAt:0 }));
-    const master = { loopLen: 0, phase0: null }; // ★ phase anchor 추가
-
-    function ensureTransport(){ if(Tone.Transport.state!=="started") Tone.Transport.start(); }
-
-    const rec = { active:false, startAt:0, events:[], activeDown:{} };
-    const snapshotCtx = ()=> ({ key:state.key, mode:state.mode, quality:state.quality, inversion:state.inversion, baseOct:state.baseOct });
-
-    function renderTracks(){
-      ui.tracks.innerHTML="";
-      tracks.forEach((t,i)=>{
-        const div=document.createElement("div"); div.className="track";
-        const st=t.enabled?"on":"off";
-        div.innerHTML=`<div class="hdr">
-          <div>Track ${i+1} <span class="kbd">${t.key}</span></div>
-          <div class="tag ${st}">${t.enabled?"ON":"OFF"}</div>
-        </div>
-        <div class="help">${t.part?`events: ${t.events.length}, loop: ${(master.loopLen||t.loopEnd).toFixed(2)}s`:`empty`}</div>
-        <div class="delHint ${(!t.enabled && t.part) ? "show": ""}">OFF상태에서 ${t.key.toUpperCase()} 2초 길게 → 삭제</div>`;
-        ui.tracks.appendChild(div);
-      });
-    }
-    renderTracks();
-
-    function pushOverdubEvent(slotId, tAbs, dur, ctx){
-      const L = master.loopLen;
-      const start = ((tAbs % L)+L)%L;
-      let remain = dur, curStart = start;
-      while (remain > 0){
-        const room = L - curStart;
-        const d = Math.min(remain, room);
-        rec.events.push({ time: curStart, slotId, dur: d, ctx });
-        remain -= d; curStart = 0;
-      }
-    }
-
-    function startRec(){
-      rec.active=true; rec.events=[]; rec.activeDown={}; rec.startAt=Tone.now();
-      ui.recName.textContent="REC"; ui.recDot.classList.add("on"); ensureTransport();
-    }
-
-    // ★ 루프 기준시각(phase anchor) 계산: 다음 루프 경계
-    function computePhaseAnchor(loopLen){
-      const now = Tone.Transport.seconds;
-      const eps = 0.02;
-      return Math.ceil((now+eps)/loopLen)*loopLen;
-    }
-
-    function stopRec(){
-      // flush held
-      if (master.loopLen > 0){
-        for (const [sid, mark] of Object.entries(rec.activeDown)) {
-          if (!mark) continue;
-          const { t0Abs, ctx } = mark;
-          const dur = Math.max(0.04, Tone.Transport.seconds - t0Abs);
-          pushOverdubEvent(sid, t0Abs, dur, ctx);
-        }
-      } else {
-        for (const [sid, mark] of Object.entries(rec.activeDown)) {
-          if (!mark) continue;
-          const { t0Rel, ctx } = mark;
-          const dur = Math.max(0.04, (Tone.now()-rec.startAt) - t0Rel);
-          rec.events.push({ time:t0Rel, slotId:sid, dur, ctx });
-        }
-      }
-      rec.active=false; rec.activeDown={}; ui.recName.textContent="Idle"; ui.recDot.classList.remove("on");
-      if(rec.events.length===0) return;
-
-      // loop length
-      let loopEnd=0; for(const ev of rec.events) loopEnd=Math.max(loopEnd, ev.time+ev.dur);
-      loopEnd=Math.max(loopEnd,0.25);
-
-      // 첫 루프면 master.loopLen/phase0 확정
-      if(master.loopLen===0){
-        master.loopLen = loopEnd;
-        ensureTransport();
-        master.phase0 = computePhaseAnchor(master.loopLen); // ★ 기준 시각 고정
-        // 기존 파트가 있었다면 모두 같은 loopLen/phase로 맞춤
-        tracks.forEach(t=>{ if(t.part){ t.part.loopEnd = master.loopLen; t.part.stop(0); t.part.start(master.phase0, 0); } });
-      } else {
-        loopEnd = master.loopLen;
-      }
-
-      assignToTrackWithPolicy(rec.events, loopEnd);
-    }
-
-    function buildPart(events, loopLen){
-      const part = new Tone.Part((time, ev)=>{
-        const notes = chordWithCtx(ev.slotId, ev.ctx);
-        synth.triggerAttackRelease(notes, ev.dur, time);
-      }, events.map(ev=>({ time: ev.time, slotId: ev.slotId, dur: ev.dur, ctx: ev.ctx })));
-      part.loop=true; part.loopEnd=loopLen;
-      // ★ 모든 Part는 동일한 phase0에서 0초 오프셋으로 시작
-      const startAt = master.phase0 ?? 0;
-      part.start(startAt, 0);
-      return part;
-    }
-
-    function assignToTrackWithPolicy(events, loopLen){
-      let idx = tracks.findIndex(t=> !t.part);
-      if(idx<0){
-        let latestIdx = 0; let latestAt = -Infinity;
-        tracks.forEach((t,i)=>{ if(t.addedAt>latestAt){ latestAt=t.addedAt; latestIdx=i; } });
-        idx = latestIdx;
-        clearTrack(idx);
-      }
-      const t = tracks[idx];
-      t.events = events.map(ev=>({...ev}));
-      t.loopEnd = loopLen;
-      t.part = buildPart(t.events, loopLen);
-      t.enabled = true;
-      t.part.mute = false;
-      t.addedAt = performance.now();
-      ensureTransport(); renderTracks();
-    }
-
-    function clearTrack(idx){
-      const t = tracks[idx];
-      if(t.part){ t.part.stop(0); t.part.dispose(); }
-      t.part=null; t.enabled=false; t.events=[]; t.loopEnd=0; t.addedAt=0;
-    }
-
-    function toggleTrackByKey(k){
-      const idx = TRACK_KEYS.indexOf(k); if(idx<0) return;
-      const t = tracks[idx]; if(!t.part) return;
-      t.enabled = !t.enabled;
-      t.part.mute = !t.enabled;
-      renderTracks();
-    }
-
-    const trackHold = {};
-    function handleTrackKeyDown(k){
-      const idx = TRACK_KEYS.indexOf(k); if(idx<0) return false;
-      const t = tracks[idx];
-      if(!t.part){ return toggleTrackByKey(k), true; }
-      toggleTrackByKey(k);
-      if(!t.enabled){
-        if(trackHold[k]?.timer) clearTimeout(trackHold[k].timer);
-        trackHold[k] = { startAt: performance.now(), timer: setTimeout(()=>{ clearTrack(idx); renderTracks(); trackHold[k] = null; }, 2000) };
-      }
-      return true;
-    }
-    function handleTrackKeyUp(k){
-      const h = trackHold[k];
-      if(h && h.timer){ clearTimeout(h.timer); trackHold[k] = null; }
-    }
-
-    /* Globals */
-    function transpose(semi){ state.key=wrap12(state.key+semi); updateStatus(); retargetHeld(); }
-    function toggleQuality(){ state.quality=(state.quality==="Triad")?"Seventh":"Triad"; state.inversion=Math.min(state.inversion,(state.quality==="Seventh")?3:2); updateStatus(); retargetHeld(); }
-    function cycleInv(){ const m=(state.quality==="Seventh")?3:2; state.inversion=(state.inversion+1)%(m+1); updateStatus(); retargetHeld(); }
-    function toggleMode(){ state.mode=(state.mode==="Major")?"Minor":"Major"; updateStatus(); retargetHeld(); }
-    function shiftOct(d){ state.baseOct=Math.max(1,Math.min(7,state.baseOct+d)); updateStatus(); retargetHeld(); }
-
-    /* Space toggle & arrow prevent */
-    function toggleRec(){ if(!rec.active) startRec(); else stopRec(); }
-    let spacePressed = false;
-
-    window.addEventListener("keydown",(e)=>{
-      const k = e.key;
-      if (e.code === "Space" || k === " " || k === "Spacebar") { e.preventDefault(); if (!spacePressed) spacePressed = true; return; }
-      if (k.startsWith("Arrow")) e.preventDefault();
-      if(e.repeat) return;
-
-      if(TRACK_KEYS.includes(k)){ handleTrackKeyDown(k); return; }
-
-      const dir = ({ u:"NW",i:"N",o:"NE",j:"W",l:"E",m:"SW", ",":"S", ".":"SE",
-                     U:"NW",I:"N",O:"NE",J:"W",L:"E",M:"SW", "<":"S", ">":"SE" })[k];
-      if(dir){ applyPreset(dir); return; }
-
-      const slotId = KEY_TO_SLOT[k];
-      if(slotId){ pressSlot(slotId, k); return; }
-
-      if(k==="ArrowLeft"){ transpose(e.shiftKey?-12:-1); }
-      else if(k==="ArrowRight"){ transpose(e.shiftKey?+12:+1); }
-      else if(k==="ArrowUp"){ cycleInv(); }
-      else if(k==="ArrowDown"){ toggleQuality(); }
-      else if(k==="m"||k==="M"){ toggleMode(); }
-      else if(k===">"||k==="."){ shiftOct(+1); }
-      else if(k===","||k==="<"){ shiftOct(-1); }
-    });
-
-    window.addEventListener("keyup",(e)=>{
-      const k = e.key;
-      if (e.code === "Space" || k === " " || k === "Spacebar") { if (spacePressed) toggleRec(); spacePressed = false; e.preventDefault(); return; }
-      if(TRACK_KEYS.includes(k)){ handleTrackKeyUp(k); return; }
-      const slotId = KEY_TO_SLOT[k];
-      if(slotId) releaseKey(k);
-    });
-
-    window.addEventListener("blur",()=>{ for(const k of [...held.keys()]) releaseKey(k); spacePressed=false; });
-  </script>
+  <script src="hichord.js"></script>
 </body>
 </html>
-
