@@ -1,0 +1,332 @@
+{
+  "nodes": [
+    {
+      "id": "page_mainPage",
+      "label": "mainPage",
+      "type": "page",
+      "size": 15,
+      "is_root": true
+    },
+    {
+      "id": "page_unidentified",
+      "label": "unidentified",
+      "type": "page",
+      "size": 15
+    },
+    {
+      "id": "tap_unidentified_1430_844",
+      "label": "(1430,844)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/unidentified/1759196497_520068a9435db5d5_1430_844.png",
+      "parent_page": "page_unidentified"
+    },
+    {
+      "id": "tap_mainPage_1681_230",
+      "label": "(1681,230)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/mainPage/1759196516_520068a9435db5d5_1681_230.png",
+      "parent_page": "page_mainPage"
+    },
+    {
+      "id": "page_2,3",
+      "label": "2,3",
+      "type": "page",
+      "size": 15
+    },
+    {
+      "id": "tap_2,3_54_64",
+      "label": "(54,64)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/2,3/1759196532_520068a9435db5d5_54_64.png",
+      "parent_page": "page_2,3"
+    },
+    {
+      "id": "tap_mainPage_120_102",
+      "label": "(120,102)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/mainPage/1759196538_520068a9435db5d5_120_102.png",
+      "parent_page": "page_mainPage"
+    },
+    {
+      "id": "page_profileSelect",
+      "label": "profileSelect",
+      "type": "page",
+      "size": 15
+    },
+    {
+      "id": "tap_profileSelect_963_956",
+      "label": "(963,956)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/profileSelect/1759196555_520068a9435db5d5_963_956.png",
+      "parent_page": "page_profileSelect"
+    },
+    {
+      "id": "tap_mainPage_1814_92",
+      "label": "(1814,92)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/mainPage/1759196563_520068a9435db5d5_1814_92.png",
+      "parent_page": "page_mainPage"
+    },
+    {
+      "id": "page_mainMenu",
+      "label": "mainMenu",
+      "type": "page",
+      "size": 15
+    },
+    {
+      "id": "tap_mainMenu_1688_288",
+      "label": "(1688,288)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/mainMenu/1759196594_520068a9435db5d5_1688_288.png",
+      "parent_page": "page_mainMenu"
+    },
+    {
+      "id": "page_myReward",
+      "label": "myReward",
+      "type": "page",
+      "size": 15
+    },
+    {
+      "id": "tap_myReward_760_116",
+      "label": "(760,116)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/myReward/1759196612_520068a9435db5d5_760_116.png",
+      "parent_page": "page_myReward"
+    },
+    {
+      "id": "page_myLeague",
+      "label": "myLeague",
+      "type": "page",
+      "size": 15
+    },
+    {
+      "id": "tap_myLeague_46_67",
+      "label": "(46,67)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/myLeague/1759196637_520068a9435db5d5_46_67.png",
+      "parent_page": "page_myLeague"
+    },
+    {
+      "id": "tap_mainPage_352_584",
+      "label": "(352,584)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/mainPage/1759196647_520068a9435db5d5_352_584.png",
+      "parent_page": "page_mainPage"
+    },
+    {
+      "id": "page_studyReport",
+      "label": "studyReport",
+      "type": "page",
+      "size": 15
+    },
+    {
+      "id": "tap_studyReport_46_65",
+      "label": "(46,65)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/studyReport/1759196663_520068a9435db5d5_46_65.png",
+      "parent_page": "page_studyReport"
+    },
+    {
+      "id": "tap_mainPage_1628_94",
+      "label": "(1628,94)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/mainPage/1759196680_520068a9435db5d5_1628_94.png",
+      "parent_page": "page_mainPage"
+    },
+    {
+      "id": "page_adventureCourse",
+      "label": "adventureCourse",
+      "type": "page",
+      "size": 15
+    },
+    {
+      "id": "tap_adventureCourse_54_67",
+      "label": "(54,67)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/adventureCourse/1759196702_520068a9435db5d5_54_67.png",
+      "parent_page": "page_adventureCourse"
+    },
+    {
+      "id": "tap_mainPage_1721_86",
+      "label": "(1721,86)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/mainPage/1759196711_520068a9435db5d5_1721_86.png",
+      "parent_page": "page_mainPage"
+    },
+    {
+      "id": "page_adventureOverview",
+      "label": "adventureOverview",
+      "type": "page",
+      "size": 15
+    },
+    {
+      "id": "tap_adventureOverview_46_64",
+      "label": "(46,64)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/adventureOverview/1759196732_520068a9435db5d5_46_64.png",
+      "parent_page": "page_adventureOverview"
+    }
+  ],
+  "edges": [
+    {
+      "source": "page_unidentified",
+      "target": "tap_unidentified_1430_844",
+      "type": "containment"
+    },
+    {
+      "source": "tap_unidentified_1430_844",
+      "target": "page_mainPage",
+      "type": "transition"
+    },
+    {
+      "source": "page_mainPage",
+      "target": "tap_mainPage_1681_230",
+      "type": "containment"
+    },
+    {
+      "source": "tap_mainPage_1681_230",
+      "target": "page_2,3",
+      "type": "transition"
+    },
+    {
+      "source": "page_2,3",
+      "target": "tap_2,3_54_64",
+      "type": "containment"
+    },
+    {
+      "source": "tap_2,3_54_64",
+      "target": "page_mainPage",
+      "type": "transition"
+    },
+    {
+      "source": "page_mainPage",
+      "target": "tap_mainPage_120_102",
+      "type": "containment"
+    },
+    {
+      "source": "tap_mainPage_120_102",
+      "target": "page_profileSelect",
+      "type": "transition"
+    },
+    {
+      "source": "page_profileSelect",
+      "target": "tap_profileSelect_963_956",
+      "type": "containment"
+    },
+    {
+      "source": "tap_profileSelect_963_956",
+      "target": "page_mainPage",
+      "type": "transition"
+    },
+    {
+      "source": "page_mainPage",
+      "target": "tap_mainPage_1814_92",
+      "type": "containment"
+    },
+    {
+      "source": "tap_mainPage_1814_92",
+      "target": "page_mainMenu",
+      "type": "transition"
+    },
+    {
+      "source": "page_mainMenu",
+      "target": "tap_mainMenu_1688_288",
+      "type": "containment"
+    },
+    {
+      "source": "tap_mainMenu_1688_288",
+      "target": "page_myReward",
+      "type": "transition"
+    },
+    {
+      "source": "page_myReward",
+      "target": "tap_myReward_760_116",
+      "type": "containment"
+    },
+    {
+      "source": "tap_myReward_760_116",
+      "target": "page_myLeague",
+      "type": "transition"
+    },
+    {
+      "source": "page_myLeague",
+      "target": "tap_myLeague_46_67",
+      "type": "containment"
+    },
+    {
+      "source": "tap_myLeague_46_67",
+      "target": "page_mainPage",
+      "type": "transition"
+    },
+    {
+      "source": "page_mainPage",
+      "target": "tap_mainPage_352_584",
+      "type": "containment"
+    },
+    {
+      "source": "tap_mainPage_352_584",
+      "target": "page_studyReport",
+      "type": "transition"
+    },
+    {
+      "source": "page_studyReport",
+      "target": "tap_studyReport_46_65",
+      "type": "containment"
+    },
+    {
+      "source": "tap_studyReport_46_65",
+      "target": "page_mainPage",
+      "type": "transition"
+    },
+    {
+      "source": "page_mainPage",
+      "target": "tap_mainPage_1628_94",
+      "type": "containment"
+    },
+    {
+      "source": "tap_mainPage_1628_94",
+      "target": "page_adventureCourse",
+      "type": "transition"
+    },
+    {
+      "source": "page_adventureCourse",
+      "target": "tap_adventureCourse_54_67",
+      "type": "containment"
+    },
+    {
+      "source": "tap_adventureCourse_54_67",
+      "target": "page_mainPage",
+      "type": "transition"
+    },
+    {
+      "source": "page_mainPage",
+      "target": "tap_mainPage_1721_86",
+      "type": "containment"
+    },
+    {
+      "source": "tap_mainPage_1721_86",
+      "target": "page_adventureOverview",
+      "type": "transition"
+    },
+    {
+      "source": "page_adventureOverview",
+      "target": "tap_adventureOverview_46_64",
+      "type": "containment"
+    }
+  ]
+}
