@@ -69,15 +69,27 @@ def main() -> None:
     log_dir = Path(__file__).with_name("log"); log_dir.mkdir(exist_ok=True)
     samples_dir = Path(__file__).with_name("samples"); samples_dir.mkdir(exist_ok=True)
     fingerprints_dir = Path(__file__).with_name("page_fingerprints"); fingerprints_dir.mkdir(exist_ok=True)
+    (fingerprints_dir / 'pagination').mkdir(exist_ok=True)
 
     log_path = log_dir/f"adb_{datetime.now():%Y%m%d_%H%M%S}.log"
     log_fp   = log_path.open("w",encoding="utf-8",buffering=1)
-    log_fp.write("type\telapsed\tserial\tpage\ttext\tx1\ty1\tx2\y2\tduration\n")
+    log_fp.write("type\telapsed\tserial\tpage\ttext\tx1\ty1\tx2\\y2\tduration\n")
 
 
     # ── 뷰어 초기화 ────────────────────────────────────────
     from viewer import MultiViewer, tap, swipe, text, capture_sample, handle_page_recognition
     start_t = time.perf_counter()
+
+    log_fp = [None] # Use a list to make it mutable inside the closure
+    def open_new_log():
+        if log_fp[0]:
+            log_fp[0].close()
+        log_path = log_dir/f"adb_{datetime.now():%Y%m%d_%H%M%S}.log"
+        log_fp[0] = log_path.open("w",encoding="utf-8",buffering=1)
+        log_fp[0].write("type\telapsed\tserial\tpage\ttext\tx1\ty1\tx2\\y2\tduration\n")
+        print(f"📄 New log file started: {log_path.name}")
+    
+    open_new_log()
 
     def log_event(kind, serial, *a):
         dt = time.perf_counter()-start_t
@@ -91,7 +103,20 @@ def main() -> None:
         elif kind=="cap":
             line=f"cap\t{dt:.2f}\t{serial}\t{page}"
         else: return
-        print(line); log_fp.write(line+"\n")
+        print(line); log_fp[0].write(line+"\n")
+
+    def save_and_reset_log():
+        print("\n🔄 Saving current log and generating new graph data...")
+        log_fp[0].close()
+        
+        try:
+            subprocess.run(["python3", "generate_graph_data.py"], check=True)
+            print("✅ Graph data regenerated.")
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            print(f"❌ Failed to generate graph data: {e}")
+
+        open_new_log()
+        print("Ready for new logging session.")
 
     viewer = MultiViewer(serials, log_fn=log_event,
                          device_resolutions=device_res,
@@ -110,12 +135,19 @@ def main() -> None:
         target=capture_sample,args=(s,x,y,v),daemon=True).start()
     viewer.page_rec_func = lambda v=viewer: threading.Thread(
         target=handle_page_recognition,args=(v,),daemon=True).start()
+    viewer.save_log_func = save_and_reset_log
+    viewer.scan_pagination_func = lambda v=viewer: threading.Thread(
+        target=v.scan_pagination_pages,daemon=True).start()
+    viewer.go_to_page_func = lambda target_page, v=viewer: threading.Thread(
+        target=v.go_to_page, args=(target_page,), daemon=True).start()
+    viewer.go_to_page_func = lambda target_page, v=viewer: threading.Thread(
+        target=v.go_to_page, args=(target_page,), daemon=True).start()
 
     viewer.show()
     try: sys.exit(app.exec_())
     finally:
         for p in scrcpy_ps: p.terminate(); p.wait()
-        log_fp.close(); print("📄 Log saved:", log_path)
+        if log_fp[0]: log_fp[0].close(); print("📄 Log saved:")
 
 if __name__=="__main__":
     main()

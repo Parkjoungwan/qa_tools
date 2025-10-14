@@ -65,6 +65,11 @@
         "name": "switch_ids",
         "script": "switch_ids.sh",
         "args": ""
+      },
+      {
+        "name": "capture",
+        "script": "capture_pull.sh",
+        "args": "1"
       }
     ]
   },
@@ -98,6 +103,35 @@
       {
         "name": "devicesReboot_1",
         "script": "devicesReboot.sh",
+        "args": "1"
+      },
+      {
+        "name": "capture_pull",
+        "script": "capture_pull.sh",
+        "args": "1"
+      }
+    ]
+  },
+  "DoYoseEnglish": {
+    "config": {
+      "PKG": "air.com.kyowon.doyose.eng",
+      "DEVICE1": "520068a9435db5d5",
+      "DEVICE2": "SERIAL2"
+    },
+    "commands": [
+      {
+        "name": "rebootApp_1",
+        "script": "rebootApp.sh",
+        "args": "1"
+      },
+      {
+        "name": "clearData_1",
+        "script": "clearData.sh",
+        "args": "1"
+      },
+      {
+        "name": "deleteApp_1",
+        "script": "deleteApp.sh",
         "args": "1"
       }
     ]

@@ -1,35 +1,78 @@
 {
   "mainPage": [
-    "mainPage_4_1759196511.png"
+    "mainPage_4_1760317728.png"
   ],
-  "2,3": [
-    "2,3_2_1759196528.png",
-    "2,3_3_1759196528.png"
+  "study1_popup_big": [
+    "study1_popup_big_2_1760317824.png",
+    "study1_popup_big_3_1760317824.png"
   ],
-  "profileSelect": [
-    "profileSelect_6_1759196550.png",
-    "profileSelect_7_1759196550.png"
+  "study1_read_train": [
+    "study1_read_train_1_1760317839.png",
+    "study1_read_train_2_1760317839.png",
+    "study1_read_train_1_1760318089.png",
+    "study1_read_train_2_1760318089.png"
   ],
-  "mainMenu": [
-    "mainMenu_4_1759196584.png",
-    "mainMenu_8_1759196584.png"
+  "study1_navi": [
+    "study1_navi_1_1760317854.png",
+    "study1_navi_1_1760318028.png",
+    "study1_navi_1_1760318109.png",
+    "study1_navi_1_1760332777.png",
+    "study1_navi_1_1760332979.png"
   ],
-  "myReward": [
-    "myReward_4_1759196608.png"
+  "study_out_confirm": [
+    "study_out_confirm_6_1760317872.png",
+    "study_out_confirm_7_1760317872.png"
   ],
-  "myLeague": [
-    "myLeague_4_1759196632.png"
+  "study1_read_activite": [
+    "study1_read_activite_1_1760317932.png",
+    "study1_read_activite_2_1760317932.png"
   ],
-  "studyReport": [
-    "studyReport_2_1759196659.png",
-    "studyReport_3_1759196659.png"
+  "study1_read_book": [
+    "study1_read_book_2_1760317999.png",
+    "study1_read_book_3_1760317999.png",
+    "study1_read_book_10_1760317999.png",
+    "study1_read_book_11_1760317999.png",
+    "study1_read_book_2_1760332761.png",
+    "study1_read_book_3_1760332761.png",
+    "study1_read_book_10_1760332761.png",
+    "study1_read_book_11_1760332761.png",
+    "study1_read_book_12_1760332936.png",
+    "study1_read_book_2_1760332958.png",
+    "study1_read_book_3_1760332958.png",
+    "study1_read_book_10_1760332958.png",
+    "study1_read_book_11_1760332958.png",
+    "study1_read_book_2_1760333201.png",
+    "study1_read_book_3_1760333201.png",
+    "study1_read_book_10_1760333201.png",
+    "study1_read_book_11_1760333201.png"
   ],
-  "adventureCourse": [
-    "adventureCourse_2_1759196695.png",
-    "adventureCourse_3_1759196695.png"
+  "study2_popup_big": [
+    "study2_popup_big_2_1760332821.png",
+    "study2_popup_big_3_1760332821.png",
+    "study2_popup_big_10_1760332821.png",
+    "study2_popup_big_11_1760332821.png",
+    "study2_popup_big_1_1760333044.png",
+    "study2_popup_big_2_1760333044.png",
+    "study2_popup_big_3_1760333044.png",
+    "study2_popup_big_4_1760333044.png"
   ],
-  "adventureOverview": [
-    "adventureOverview_2_1759196727.png",
-    "adventureOverview_3_1759196727.png"
+  "study_popup_mid": [
+    "study_popup_mid_6_1760332843.png",
+    "study_popup_mid_7_1760332843.png"
+  ],
+  "study2_read_train": [
+    "study2_read_train_1_1760332862.png",
+    "study2_read_train_2_1760332862.png",
+    "study2_read_train_1_1760333110.png",
+    "study2_read_train_2_1760333110.png"
+  ],
+  "study2_navi": [
+    "study2_navi_1_1760332880.png"
+  ],
+  "study2_popup_mid": [
+    "study2_popup_mid_2_1760333069.png",
+    "study2_popup_mid_3_1760333069.png",
+    "study2_popup_mid_6_1760333069.png",
+    "study2_popup_mid_7_1760333069.png"
   ]
 }

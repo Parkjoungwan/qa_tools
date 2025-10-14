@@ -2,16 +2,22 @@
 
 ## Overview
 
-This tool mirrors an Android device's screen, captures user interactions (taps, swipes), and processes this data to generate an interactive visualization of the user's journey through different application pages. It is designed for analyzing user behavior, understanding app navigation flows, and documenting interaction patterns.
+This tool mirrors an Android device's screen, captures user interactions (taps, swipes), and processes this data to generate an interactive visualization of the user's journey through different application pages. It is designed for analyzing user behavior, understanding app navigation flows, and automatically generating action logs for replaying specific routes.
 
 ## Key Features
 
 - **Real-time Screen Mirroring:** Displays the device screen on your computer using `scrcpy`.
 - **Interaction Logging:** Captures `tap` and `swipe` events with precise coordinates, timing, and page context.
-- **Image Sampling:** Automatically captures a 100x100 pixel image sample around the location of a new tap, avoiding duplicates for performance.
-- **Page Recognition:** A semi-automated system to "fingerprint" and recognize different application pages. Pressing the 'N' key identifies the current page or initiates a registration process for new pages.
-- **Cumulative Data Processing:** A script processes all historical log files to build a comprehensive interaction graph.
-- **Graph Visualization:** A web-based, interactive force-directed graph that visualizes pages and tap events as nodes and transitions as edges. Supports panning, zooming, and a depth-based arrangement.
+- **Image Sampling:** Automatically captures an image sample around a new tap location, preventing duplicate captures for efficiency.
+- **Advanced Page Recognition:**
+    - **General Pages (`N` Key):** A semi-automated system to "fingerprint" and recognize different application pages.
+    - **Pagination Pages (`P` Key):** A dedicated workflow to register and automatically scan paginated views (e.g., multi-page lists or carousels), recognizing the current page number.
+- **Live Update Cycle (`S` Key):** Save the current session log and regenerate the graph data on the fly, allowing for real-time updates in the visualizer.
+- **Interactive Graph Visualization:**
+    - A web-based, force-directed graph that visualizes pages and taps as nodes and transitions as edges.
+    - Default layout arranges nodes by depth from the `mainPage` for clarity.
+    - Supports panning, zooming, and dragging nodes.
+- **Route Extraction:** Visually select a sequence of page nodes on the graph and extract a clean, executable `.log` file containing only the `tap` actions required to navigate that specific path.
 
 ## How to Use
 
@@ -32,50 +38,48 @@ This stage involves running the main application to mirror the screen and record
     ```
 
 3.  **Interaction Controls**
-    -   **Mouse Click/Drag:** Simulates `tap` or `swipe` events on the device. A tap on a previously un-tapped area will also save an image sample to the `samples/` directory.
-    -   **`N` Key:** Press this key whenever you navigate to a new page. 
-        - If the page is recognized from past sessions, the tool will confirm.
-        - If it's a new page, a dialog will prompt you to name the page and select grid areas to create a visual "fingerprint".
-    -   **`ESC` Key:** Closes the application and saves the log file.
+    -   **Mouse Click/Drag:** Simulates `tap` or `swipe` events on the device.
+    -   **`N` Key (Page Recognition):** Press when you navigate to a new, non-paginated page. If the page is new, a registration dialog will appear.
+    -   **`P` Key (Pagination Registration):** Press on a page with pagination controls to begin the registration process. Follow the on-screen prompts to define the pagination area and buttons. 
+    -   **`S` Key (Save & Update):** Press to save the current log, regenerate the graph data, and start a new log file. Use this to update the visualizer without restarting the application.
+    -   **`G` Key (Go to Page):** On a registered paginated page, press this key and enter a page number to automatically navigate to it.
+    -   **`ESC` Key:** Closes the application.
 
 ### Part 2: Data Visualization
 
 After you have collected some interaction data, you can generate and view the graph.
 
-1.  **Generate Graph Data**
-    -   Run the processing script. This script reads all files in the `log/` directory, processes them, and generates a single `graph.json` file for the visualization.
+1.  **Generate Graph Data (if not using `S` key)**
+    -   If you did not use the `S` key during collection, run this script manually to process all logs.
     ```bash
     python3 generate_graph_data.py
     ```
 
 2.  **Start the Web Server**
-    -   Navigate to the project's root directory (`adb_mirror_Up/`) in your terminal and run a simple python web server.
+    -   In the project's root directory, run a simple python web server. Use a specific port like `8080` to avoid conflicts.
     ```bash
-    python3 -m http.server
+    python3 -m http.server 8080
     ```
 
 3.  **View the Visualization**
-    -   Open your web browser and go to the following address:
-    -   **http://localhost:8000/visualization/**
+    -   Open your web browser and go to: **http://localhost:8080/visualization/**
 
 4.  **Interacting with the Graph**
-    -   **Pan:** Click and drag the background to move the graph.
-    -   **Zoom:** Use the mouse wheel to zoom in and out.
-    -   **Arrange by Depth:** Click this button to arrange nodes in columns based on their distance from the `mainPage` node.
-    -   **Toggle Physics:** Switch between the depth arrangement and the live physics simulation.
-    -   **Hover:** Mouse over a node to see its details and a preview of the sampled image.
+    -   **Pan/Zoom:** Drag the background to pan, use the mouse wheel to zoom.
+    -   **Arrange by Depth:** Re-applies the default, depth-based node layout.
+    -   **Make Route:** Toggles route-building mode. Click page nodes sequentially to define a path.
+    -   **Extract Route:** After creating a route, click this to generate and download a `route.log` file containing the necessary `tap` commands.
+    -   **Refresh Data:** Click this after pressing the `S` key in the main app to load the latest graph data without a full page reload.
 
 ## File Structure
 
 - `main.py`: Main application for screen mirroring and data collection.
-- `viewer.py`: Handles the PyQt5 overlay, user input, and real-time optimizations.
-- `generate_graph_data.py`: Script to process logs into a JSON graph format.
-- `requirements.txt`: Python dependencies.
-- `log/`: Stores raw event log files from each session.
-- `samples/`: Stores sampled images from tap events, organized in subdirectories by page name.
-- `page_fingerprints/`: Stores the visual templates (fingerprints) for page recognition.
-- `visualization/`:
-  - `index.html`: The main page for the graph visualization.
-  - `script.js`: Contains all logic for rendering and interacting with the graph.
-  - `style.css`: Styles for the visualization page.
-  - `graph.json`: The generated graph data (read by `script.js`).
+- `viewer.py`: Handles the PyQt5 overlay, user input, and all interactive logic.
+- `generate_graph_data.py`: Script to process all logs into a `graph.json` file.
+- `page_fingerprints/`: Stores visual templates for page recognition.
+  - `pagination_<page_name>/`: Contains images and `pagination_info.json` for registered paginated pages.
+- `visualization/`: Contains the web-based visualizer.
+  - `index.html`, `style.css`, `script.js`: Core files for the visualizer.
+  - `graph.json`: The generated graph data consumed by `script.js`.
+- `log/`: Stores raw event log files.
+- `samples/`: Stores sampled images from tap events.

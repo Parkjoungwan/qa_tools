@@ -290,44 +290,77 @@
     ]
   },
   {
-    "name": "kw10016",
-    "queue": [
-      [
-        "log",
-        "/Users/kim/opencv_project/adb_mirror/log/adb_20250916_092846.log",
-        1,
-        1.0
-      ]
-    ]
-  },
-  {
-    "name": "kw20016",
-    "queue": [
-      [
-        "log",
-        "/Users/kim/opencv_project/adb_mirror/log/adb_20250916_092846_2.log",
-        1,
-        1.0
-      ]
-    ]
-  },
-  {
-    "name": "kw30016",
-    "queue": [
-      [
-        "log",
-        "/Users/kim/opencv_project/adb_mirror/log/adb_20250916_092846_3.log",
-        1,
-        1.0
-      ]
-    ]
-  },
-  {
     "name": "space_login",
     "queue": [
       [
         "log",
         "/Users/kim/opencv_project/adb_mirror/log/adb_20250916_133911.log",
+        1,
+        1.0
+      ]
+    ]
+  },
+  {
+    "name": "login_munhae_100",
+    "queue": [
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/login_munhae_100.log",
+        1,
+        1.0
+      ]
+    ]
+  },
+  {
+    "name": "login_munhae_200",
+    "queue": [
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/login_munhae_200.log",
+        1,
+        1.0
+      ]
+    ]
+  },
+  {
+    "name": "login_munhae_300",
+    "queue": [
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/login_munhae_300.log",
+        1,
+        1.0
+      ]
+    ]
+  },
+  {
+    "name": "login_munhase_400",
+    "queue": [
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/login_munhae_400.log",
+        1,
+        1.0
+      ]
+    ]
+  },
+  {
+    "name": "doyose_login",
+    "queue": [
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/doyose_login.log",
+        1,
+        1.0
+      ]
+    ]
+  },
+  {
+    "name": "set_admin_doyose",
+    "queue": [
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/set_admin_doyoseEnglish.log",
         1,
         1.0
       ]

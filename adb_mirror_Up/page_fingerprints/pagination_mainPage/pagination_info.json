@@ -1,0 +1,17 @@
+{
+  "area": {
+    "x1": 496,
+    "y1": 43,
+    "x2": 1456,
+    "y2": 132
+  },
+  "left_button": {
+    "x": 539,
+    "y": 89
+  },
+  "right_button": {
+    "x": 1417,
+    "y": 91
+  },
+  "owner_page": "mainPage"
+}

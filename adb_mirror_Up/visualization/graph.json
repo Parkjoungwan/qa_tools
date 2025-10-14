@@ -1,11 +1,173 @@
 {
   "nodes": [
     {
-      "id": "page_mainPage",
+      "id": "page_mainPage_1",
       "label": "mainPage",
       "type": "page",
       "size": 15,
       "is_root": true
+    },
+    {
+      "id": "tap_mainPage_1_966_700",
+      "label": "(966,700)",
+      "type": "tap",
+      "size": 6,
+      "image": null,
+      "parent_page": "page_mainPage_1",
+      "logLine": "tap\t58.91\t520068a9435db5d5\tmainPage\t\t966\t700"
+    },
+    {
+      "id": "tap_mainPage_1_552_318",
+      "label": "(552,318)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/mainPage_1/1760317806_520068a9435db5d5_552_318.png",
+      "parent_page": "page_mainPage_1",
+      "logLine": "tap\t88.28\t520068a9435db5d5\tmainPage_1\t\t552\t318"
+    },
+    {
+      "id": "page_study1_popup_big",
+      "label": "study1_popup_big",
+      "type": "page",
+      "size": 15
+    },
+    {
+      "id": "tap_study1_popup_big_1696_113",
+      "label": "(1696,113)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/study1_popup_big/1760317829_520068a9435db5d5_1696_113.png",
+      "parent_page": "page_study1_popup_big",
+      "logLine": "tap\t111.23\t520068a9435db5d5\tstudy1_popup_big\t\t1696\t113"
+    },
+    {
+      "id": "page_study1_read_train",
+      "label": "study1_read_train",
+      "type": "page",
+      "size": 15
+    },
+    {
+      "id": "tap_study1_read_train_1867_40",
+      "label": "(1867,40)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/study1_read_train/1760317843_520068a9435db5d5_1867_40.png",
+      "parent_page": "page_study1_read_train",
+      "logLine": "tap\t125.76\t520068a9435db5d5\tstudy1_read_train\t\t1867\t40"
+    },
+    {
+      "id": "page_study1_navi",
+      "label": "study1_navi",
+      "type": "page",
+      "size": 15
+    },
+    {
+      "id": "tap_study1_navi_1857_49",
+      "label": "(1857,49)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/study1_navi/1760317860_520068a9435db5d5_1857_49.png",
+      "parent_page": "page_study1_navi",
+      "logLine": "tap\t142.90\t520068a9435db5d5\tstudy1_navi\t\t1857\t49"
+    },
+    {
+      "id": "page_study_out_confirm",
+      "label": "study_out_confirm",
+      "type": "page",
+      "size": 15
+    },
+    {
+      "id": "tap_study_out_confirm_1112_692",
+      "label": "(1112,692)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/study_out_confirm/1760317878_520068a9435db5d5_1112_692.png",
+      "parent_page": "page_study_out_confirm",
+      "logLine": "tap\t160.74\t520068a9435db5d5\tstudy_out_confirm\t\t1112\t692"
+    },
+    {
+      "id": "page_mainPage_2",
+      "label": "mainPage_2",
+      "type": "page",
+      "size": 15
+    },
+    {
+      "id": "tap_mainPage_2_563_635",
+      "label": "(563,635)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/mainPage_2/1760317902_520068a9435db5d5_563_635.png",
+      "parent_page": "page_mainPage_2",
+      "logLine": "tap\t183.93\t520068a9435db5d5\tmainPage_2\t\t563\t635"
+    },
+    {
+      "id": "page_study1_read_activite",
+      "label": "study1_read_activite",
+      "type": "page",
+      "size": 15
+    },
+    {
+      "id": "tap_study1_read_activite_1872_40",
+      "label": "(1872,40)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/study1_read_activite/1760317938_520068a9435db5d5_1872_40.png",
+      "parent_page": "page_study1_read_activite",
+      "logLine": "tap\t220.87\t520068a9435db5d5\tstudy1_read_activite\t\t1872\t40"
+    },
+    {
+      "id": "page_mainPage_3",
+      "label": "mainPage_3",
+      "type": "page",
+      "size": 15
+    },
+    {
+      "id": "tap_mainPage_3_584_654",
+      "label": "(584,654)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/mainPage_3/1760317971_520068a9435db5d5_584_654.png",
+      "parent_page": "page_mainPage_3",
+      "logLine": "tap\t253.19\t520068a9435db5d5\tmainPage_3\t\t584\t654"
+    },
+    {
+      "id": "page_study1_read_book",
+      "label": "study1_read_book",
+      "type": "page",
+      "size": 15
+    },
+    {
+      "id": "tap_study1_read_book_1868_44",
+      "label": "(1868,44)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/study1_read_book/1760318009_520068a9435db5d5_1868_44.png",
+      "parent_page": "page_study1_read_book",
+      "logLine": "tap\t291.45\t520068a9435db5d5\tstudy1_read_book\t\t1868\t44"
+    },
+    {
+      "id": "page_mainPage_4",
+      "label": "mainPage_4",
+      "type": "page",
+      "size": 15
+    },
+    {
+      "id": "tap_mainPage_4_587_649",
+      "label": "(587,649)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/mainPage_4/1760318057_520068a9435db5d5_587_649.png",
+      "parent_page": "page_mainPage_4",
+      "logLine": "tap\t339.48\t520068a9435db5d5\tmainPage_4\t\t587\t649"
+    },
+    {
+      "id": "tap_mainPage_1_1764_753",
+      "label": "(1764,753)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/mainPage_1/1760332638_520068a9435db5d5_1764_753.png",
+      "parent_page": "page_mainPage_1",
+      "logLine": "tap\t169.80\t520068a9435db5d5\tmainPage_1\t\t1764\t753"
     },
     {
       "id": "page_unidentified",
@@ -14,319 +176,656 @@
       "size": 15
     },
     {
-      "id": "tap_unidentified_1430_844",
-      "label": "(1430,844)",
+      "id": "tap_unidentified_52_65",
+      "label": "(52,65)",
       "type": "tap",
       "size": 6,
-      "image": "../samples/unidentified/1759196497_520068a9435db5d5_1430_844.png",
-      "parent_page": "page_unidentified"
+      "image": "../samples/unidentified/1760332689_520068a9435db5d5_52_65.png",
+      "parent_page": "page_unidentified",
+      "logLine": "tap\t7.72\t520068a9435db5d5\tunidentified\t\t52\t65"
     },
     {
-      "id": "tap_mainPage_1681_230",
-      "label": "(1681,230)",
+      "id": "tap_mainPage_2_486_841",
+      "label": "(486,841)",
       "type": "tap",
       "size": 6,
-      "image": "../samples/mainPage/1759196516_520068a9435db5d5_1681_230.png",
-      "parent_page": "page_mainPage"
+      "image": "../samples/mainPage_2/1760332708_520068a9435db5d5_486_841.png",
+      "parent_page": "page_mainPage_2",
+      "logLine": "tap\t26.94\t520068a9435db5d5\tmainPage_2\t\t486\t841"
     },
     {
-      "id": "page_2,3",
-      "label": "2,3",
+      "id": "page_mainPage_5",
+      "label": "mainPage_5",
       "type": "page",
       "size": 15
     },
     {
-      "id": "tap_2,3_54_64",
-      "label": "(54,64)",
+      "id": "tap_mainPage_5_571_662",
+      "label": "(571,662)",
       "type": "tap",
       "size": 6,
-      "image": "../samples/2,3/1759196532_520068a9435db5d5_54_64.png",
-      "parent_page": "page_2,3"
+      "image": "../samples/mainPage_5/1760332740_520068a9435db5d5_571_662.png",
+      "parent_page": "page_mainPage_5",
+      "logLine": "tap\t59.08\t520068a9435db5d5\tmainPage_5\t\t571\t662"
     },
     {
-      "id": "tap_mainPage_120_102",
-      "label": "(120,102)",
+      "id": "tap_mainPage_5_1371_649",
+      "label": "(1371,649)",
       "type": "tap",
       "size": 6,
-      "image": "../samples/mainPage/1759196538_520068a9435db5d5_120_102.png",
-      "parent_page": "page_mainPage"
+      "image": "../samples/mainPage_5/1760332803_520068a9435db5d5_1371_649.png",
+      "parent_page": "page_mainPage_5",
+      "logLine": "tap\t122.07\t520068a9435db5d5\tmainPage_5\t\t1371\t649"
     },
     {
-      "id": "page_profileSelect",
-      "label": "profileSelect",
+      "id": "page_study2_popup_big",
+      "label": "study2_popup_big",
       "type": "page",
       "size": 15
     },
     {
-      "id": "tap_profileSelect_963_956",
-      "label": "(963,956)",
+      "id": "tap_study2_popup_big_1704_118",
+      "label": "(1704,118)",
       "type": "tap",
       "size": 6,
-      "image": "../samples/profileSelect/1759196555_520068a9435db5d5_963_956.png",
-      "parent_page": "page_profileSelect"
+      "image": "../samples/study2_popup_big/1760332824_520068a9435db5d5_1704_118.png",
+      "parent_page": "page_study2_popup_big",
+      "logLine": "tap\t143.35\t520068a9435db5d5\tstudy2_popup_big\t\t1704\t118"
     },
     {
-      "id": "tap_mainPage_1814_92",
-      "label": "(1814,92)",
-      "type": "tap",
-      "size": 6,
-      "image": "../samples/mainPage/1759196563_520068a9435db5d5_1814_92.png",
-      "parent_page": "page_mainPage"
-    },
-    {
-      "id": "page_mainMenu",
-      "label": "mainMenu",
+      "id": "page_study_popup_mid",
+      "label": "study_popup_mid",
       "type": "page",
       "size": 15
     },
     {
-      "id": "tap_mainMenu_1688_288",
-      "label": "(1688,288)",
+      "id": "tap_study_popup_mid_1454_297",
+      "label": "(1454,297)",
       "type": "tap",
       "size": 6,
-      "image": "../samples/mainMenu/1759196594_520068a9435db5d5_1688_288.png",
-      "parent_page": "page_mainMenu"
+      "image": "../samples/study_popup_mid/1760332846_520068a9435db5d5_1454_297.png",
+      "parent_page": "page_study_popup_mid",
+      "logLine": "tap\t165.38\t520068a9435db5d5\tstudy_popup_mid\t\t1454\t297"
     },
     {
-      "id": "page_myReward",
-      "label": "myReward",
+      "id": "page_study2_read_train",
+      "label": "study2_read_train",
       "type": "page",
       "size": 15
     },
     {
-      "id": "tap_myReward_760_116",
-      "label": "(760,116)",
+      "id": "tap_study2_read_train_1873_40",
+      "label": "(1873,40)",
       "type": "tap",
       "size": 6,
-      "image": "../samples/myReward/1759196612_520068a9435db5d5_760_116.png",
-      "parent_page": "page_myReward"
+      "image": "../samples/study2_read_train/1760332868_520068a9435db5d5_1873_40.png",
+      "parent_page": "page_study2_read_train",
+      "logLine": "tap\t187.14\t520068a9435db5d5\tstudy2_read_train\t\t1873\t40"
     },
     {
-      "id": "page_myLeague",
-      "label": "myLeague",
+      "id": "page_study2_navi",
+      "label": "study2_navi",
       "type": "page",
       "size": 15
     },
     {
-      "id": "tap_myLeague_46_67",
-      "label": "(46,67)",
+      "id": "tap_study2_navi_1868_44",
+      "label": "(1868,44)",
       "type": "tap",
       "size": 6,
-      "image": "../samples/myLeague/1759196637_520068a9435db5d5_46_67.png",
-      "parent_page": "page_myLeague"
+      "image": "../samples/study2_navi/1760332883_520068a9435db5d5_1868_44.png",
+      "parent_page": "page_study2_navi",
+      "logLine": "tap\t202.59\t520068a9435db5d5\tstudy2_navi\t\t1868\t44"
     },
     {
-      "id": "tap_mainPage_352_584",
-      "label": "(352,584)",
-      "type": "tap",
-      "size": 6,
-      "image": "../samples/mainPage/1759196647_520068a9435db5d5_352_584.png",
-      "parent_page": "page_mainPage"
-    },
-    {
-      "id": "page_studyReport",
-      "label": "studyReport",
+      "id": "page_mainPage_6",
+      "label": "mainPage_6",
       "type": "page",
       "size": 15
     },
     {
-      "id": "tap_studyReport_46_65",
-      "label": "(46,65)",
+      "id": "tap_mainPage_6_579_652",
+      "label": "(579,652)",
       "type": "tap",
       "size": 6,
-      "image": "../samples/studyReport/1759196663_520068a9435db5d5_46_65.png",
-      "parent_page": "page_studyReport"
+      "image": "../samples/mainPage_6/1760332916_520068a9435db5d5_579_652.png",
+      "parent_page": "page_mainPage_6",
+      "logLine": "tap\t234.52\t520068a9435db5d5\tmainPage_6\t\t579\t652"
     },
     {
-      "id": "tap_mainPage_1628_94",
-      "label": "(1628,94)",
+      "id": "tap_mainPage_6_1376_651",
+      "label": "(1376,651)",
       "type": "tap",
       "size": 6,
-      "image": "../samples/mainPage/1759196680_520068a9435db5d5_1628_94.png",
-      "parent_page": "page_mainPage"
+      "image": "../samples/mainPage_6/1760333020_520068a9435db5d5_1376_651.png",
+      "parent_page": "page_mainPage_6",
+      "logLine": "tap\t339.22\t520068a9435db5d5\tmainPage_6\t\t1376\t651"
     },
     {
-      "id": "page_adventureCourse",
-      "label": "adventureCourse",
+      "id": "page_study2_popup_mid",
+      "label": "study2_popup_mid",
       "type": "page",
       "size": 15
     },
     {
-      "id": "tap_adventureCourse_54_67",
-      "label": "(54,67)",
+      "id": "tap_study2_popup_mid_1454_294",
+      "label": "(1454,294)",
       "type": "tap",
       "size": 6,
-      "image": "../samples/adventureCourse/1759196702_520068a9435db5d5_54_67.png",
-      "parent_page": "page_adventureCourse"
+      "image": "../samples/study2_popup_mid/1760333073_520068a9435db5d5_1454_294.png",
+      "parent_page": "page_study2_popup_mid",
+      "logLine": "tap\t392.48\t520068a9435db5d5\tstudy2_popup_mid\t\t1454\t294"
     },
     {
-      "id": "tap_mainPage_1721_86",
-      "label": "(1721,86)",
-      "type": "tap",
-      "size": 6,
-      "image": "../samples/mainPage/1759196711_520068a9435db5d5_1721_86.png",
-      "parent_page": "page_mainPage"
-    },
-    {
-      "id": "page_adventureOverview",
-      "label": "adventureOverview",
+      "id": "page_mainPage_7",
+      "label": "mainPage_7",
       "type": "page",
       "size": 15
     },
     {
-      "id": "tap_adventureOverview_46_64",
-      "label": "(46,64)",
+      "id": "tap_mainPage_7_579_652",
+      "label": "(579,652)",
       "type": "tap",
       "size": 6,
-      "image": "../samples/adventureOverview/1759196732_520068a9435db5d5_46_64.png",
-      "parent_page": "page_adventureOverview"
+      "image": "../samples/mainPage_7/1760333173_520068a9435db5d5_579_652.png",
+      "parent_page": "page_mainPage_7",
+      "logLine": "tap\t491.83\t520068a9435db5d5\tmainPage_7\t\t579\t652"
+    },
+    {
+      "id": "tap_study_out_confirm_1038_905",
+      "label": "(1038,905)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/study_out_confirm/1760333331_520068a9435db5d5_1038_905.png",
+      "parent_page": "page_study_out_confirm",
+      "logLine": "tap\t650.29\t520068a9435db5d5\tstudy_out_confirm\t\t1038\t905"
     }
   ],
   "edges": [
     {
+      "source": "page_mainPage_1",
+      "target": "tap_mainPage_1_966_700",
+      "type": "containment"
+    },
+    {
+      "source": "page_mainPage_1",
+      "target": "tap_mainPage_1_552_318",
+      "type": "containment"
+    },
+    {
+      "source": "tap_mainPage_1_552_318",
+      "target": "page_study1_popup_big",
+      "type": "transition"
+    },
+    {
+      "source": "page_study1_popup_big",
+      "target": "tap_study1_popup_big_1696_113",
+      "type": "containment"
+    },
+    {
+      "source": "tap_study1_popup_big_1696_113",
+      "target": "page_study1_read_train",
+      "type": "transition"
+    },
+    {
+      "source": "page_study1_read_train",
+      "target": "tap_study1_read_train_1867_40",
+      "type": "containment"
+    },
+    {
+      "source": "tap_study1_read_train_1867_40",
+      "target": "page_study1_navi",
+      "type": "transition"
+    },
+    {
+      "source": "page_study1_navi",
+      "target": "tap_study1_navi_1857_49",
+      "type": "containment"
+    },
+    {
+      "source": "tap_study1_navi_1857_49",
+      "target": "page_study_out_confirm",
+      "type": "transition"
+    },
+    {
+      "source": "page_study_out_confirm",
+      "target": "tap_study_out_confirm_1112_692",
+      "type": "containment"
+    },
+    {
+      "source": "tap_study_out_confirm_1112_692",
+      "target": "page_mainPage_2",
+      "type": "transition"
+    },
+    {
+      "source": "page_mainPage_2",
+      "target": "tap_mainPage_2_563_635",
+      "type": "containment"
+    },
+    {
+      "source": "tap_mainPage_2_563_635",
+      "target": "page_study1_read_activite",
+      "type": "transition"
+    },
+    {
+      "source": "page_study1_read_activite",
+      "target": "tap_study1_read_activite_1872_40",
+      "type": "containment"
+    },
+    {
+      "source": "tap_study1_read_activite_1872_40",
+      "target": "page_study1_navi",
+      "type": "transition"
+    },
+    {
+      "source": "tap_study_out_confirm_1112_692",
+      "target": "page_mainPage_3",
+      "type": "transition"
+    },
+    {
+      "source": "page_mainPage_3",
+      "target": "tap_mainPage_3_584_654",
+      "type": "containment"
+    },
+    {
+      "source": "tap_mainPage_3_584_654",
+      "target": "page_study1_read_book",
+      "type": "transition"
+    },
+    {
+      "source": "page_study1_read_book",
+      "target": "tap_study1_read_book_1868_44",
+      "type": "containment"
+    },
+    {
+      "source": "tap_study1_read_book_1868_44",
+      "target": "page_study1_navi",
+      "type": "transition"
+    },
+    {
+      "source": "tap_study_out_confirm_1112_692",
+      "target": "page_mainPage_4",
+      "type": "transition"
+    },
+    {
+      "source": "page_mainPage_4",
+      "target": "tap_mainPage_4_587_649",
+      "type": "containment"
+    },
+    {
+      "source": "tap_mainPage_4_587_649",
+      "target": "page_study1_popup_big",
+      "type": "transition"
+    },
+    {
+      "source": "tap_study_out_confirm_1112_692",
+      "target": "page_mainPage_1",
+      "type": "transition"
+    },
+    {
+      "source": "page_mainPage_1",
+      "target": "tap_mainPage_1_1764_753",
+      "type": "containment"
+    },
+    {
+      "source": "tap_mainPage_1_1764_753",
+      "target": "page_unidentified",
+      "type": "transition"
+    },
+    {
       "source": "page_unidentified",
-      "target": "tap_unidentified_1430_844",
+      "target": "tap_unidentified_52_65",
       "type": "containment"
     },
     {
-      "source": "tap_unidentified_1430_844",
-      "target": "page_mainPage",
+      "source": "tap_unidentified_52_65",
+      "target": "page_mainPage_2",
       "type": "transition"
     },
     {
-      "source": "page_mainPage",
-      "target": "tap_mainPage_1681_230",
+      "source": "page_mainPage_2",
+      "target": "tap_mainPage_2_486_841",
       "type": "containment"
     },
     {
-      "source": "tap_mainPage_1681_230",
-      "target": "page_2,3",
+      "source": "tap_mainPage_2_486_841",
+      "target": "page_mainPage_5",
       "type": "transition"
     },
     {
-      "source": "page_2,3",
-      "target": "tap_2,3_54_64",
+      "source": "page_mainPage_5",
+      "target": "tap_mainPage_5_571_662",
       "type": "containment"
     },
     {
-      "source": "tap_2,3_54_64",
-      "target": "page_mainPage",
+      "source": "tap_mainPage_5_571_662",
+      "target": "page_study1_read_book",
       "type": "transition"
     },
     {
-      "source": "page_mainPage",
-      "target": "tap_mainPage_120_102",
-      "type": "containment"
-    },
-    {
-      "source": "tap_mainPage_120_102",
-      "target": "page_profileSelect",
+      "source": "tap_study_out_confirm_1112_692",
+      "target": "page_mainPage_5",
       "type": "transition"
     },
     {
-      "source": "page_profileSelect",
-      "target": "tap_profileSelect_963_956",
+      "source": "page_mainPage_5",
+      "target": "tap_mainPage_5_1371_649",
       "type": "containment"
     },
     {
-      "source": "tap_profileSelect_963_956",
-      "target": "page_mainPage",
+      "source": "tap_mainPage_5_1371_649",
+      "target": "page_study2_popup_big",
       "type": "transition"
     },
     {
-      "source": "page_mainPage",
-      "target": "tap_mainPage_1814_92",
+      "source": "page_study2_popup_big",
+      "target": "tap_study2_popup_big_1704_118",
       "type": "containment"
     },
     {
-      "source": "tap_mainPage_1814_92",
-      "target": "page_mainMenu",
+      "source": "tap_study2_popup_big_1704_118",
+      "target": "page_study_popup_mid",
       "type": "transition"
     },
     {
-      "source": "page_mainMenu",
-      "target": "tap_mainMenu_1688_288",
+      "source": "page_study_popup_mid",
+      "target": "tap_study_popup_mid_1454_297",
       "type": "containment"
     },
     {
-      "source": "tap_mainMenu_1688_288",
-      "target": "page_myReward",
+      "source": "tap_study_popup_mid_1454_297",
+      "target": "page_study2_read_train",
       "type": "transition"
     },
     {
-      "source": "page_myReward",
-      "target": "tap_myReward_760_116",
+      "source": "page_study2_read_train",
+      "target": "tap_study2_read_train_1873_40",
       "type": "containment"
     },
     {
-      "source": "tap_myReward_760_116",
-      "target": "page_myLeague",
+      "source": "tap_study2_read_train_1873_40",
+      "target": "page_study2_navi",
       "type": "transition"
     },
     {
-      "source": "page_myLeague",
-      "target": "tap_myLeague_46_67",
+      "source": "page_study2_navi",
+      "target": "tap_study2_navi_1868_44",
       "type": "containment"
     },
     {
-      "source": "tap_myLeague_46_67",
-      "target": "page_mainPage",
+      "source": "tap_study2_navi_1868_44",
+      "target": "page_study_out_confirm",
       "type": "transition"
     },
     {
-      "source": "page_mainPage",
-      "target": "tap_mainPage_352_584",
-      "type": "containment"
-    },
-    {
-      "source": "tap_mainPage_352_584",
-      "target": "page_studyReport",
+      "source": "tap_study_out_confirm_1112_692",
+      "target": "page_mainPage_6",
       "type": "transition"
     },
     {
-      "source": "page_studyReport",
-      "target": "tap_studyReport_46_65",
+      "source": "page_mainPage_6",
+      "target": "tap_mainPage_6_579_652",
       "type": "containment"
     },
     {
-      "source": "tap_studyReport_46_65",
-      "target": "page_mainPage",
+      "source": "tap_mainPage_6_579_652",
+      "target": "page_study1_read_book",
       "type": "transition"
     },
     {
-      "source": "page_mainPage",
-      "target": "tap_mainPage_1628_94",
+      "source": "page_mainPage_6",
+      "target": "tap_mainPage_6_1376_651",
       "type": "containment"
     },
     {
-      "source": "tap_mainPage_1628_94",
-      "target": "page_adventureCourse",
+      "source": "tap_mainPage_6_1376_651",
+      "target": "page_study2_popup_big",
       "type": "transition"
     },
     {
-      "source": "page_adventureCourse",
-      "target": "tap_adventureCourse_54_67",
-      "type": "containment"
-    },
-    {
-      "source": "tap_adventureCourse_54_67",
-      "target": "page_mainPage",
+      "source": "tap_study2_popup_big_1704_118",
+      "target": "page_study2_popup_mid",
       "type": "transition"
     },
     {
-      "source": "page_mainPage",
-      "target": "tap_mainPage_1721_86",
+      "source": "page_study2_popup_mid",
+      "target": "tap_study2_popup_mid_1454_294",
       "type": "containment"
     },
     {
-      "source": "tap_mainPage_1721_86",
-      "target": "page_adventureOverview",
+      "source": "tap_study2_popup_mid_1454_294",
+      "target": "page_study2_read_train",
       "type": "transition"
     },
     {
-      "source": "page_adventureOverview",
-      "target": "tap_adventureOverview_46_64",
+      "source": "tap_study_out_confirm_1112_692",
+      "target": "page_mainPage_7",
+      "type": "transition"
+    },
+    {
+      "source": "page_mainPage_7",
+      "target": "tap_mainPage_7_579_652",
       "type": "containment"
+    },
+    {
+      "source": "tap_mainPage_7_579_652",
+      "target": "page_study1_read_book",
+      "type": "transition"
+    },
+    {
+      "source": "page_study_out_confirm",
+      "target": "tap_study_out_confirm_1038_905",
+      "type": "containment"
+    },
+    {
+      "source": "page_mainPage_1",
+      "target": "page_mainPage_2",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_2",
+      "target": "page_mainPage_1",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_1",
+      "target": "page_mainPage_3",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_3",
+      "target": "page_mainPage_1",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_1",
+      "target": "page_mainPage_4",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_4",
+      "target": "page_mainPage_1",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_1",
+      "target": "page_mainPage_5",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_5",
+      "target": "page_mainPage_1",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_1",
+      "target": "page_mainPage_6",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_6",
+      "target": "page_mainPage_1",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_1",
+      "target": "page_mainPage_7",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_7",
+      "target": "page_mainPage_1",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_2",
+      "target": "page_mainPage_3",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_3",
+      "target": "page_mainPage_2",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_2",
+      "target": "page_mainPage_4",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_4",
+      "target": "page_mainPage_2",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_2",
+      "target": "page_mainPage_5",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_5",
+      "target": "page_mainPage_2",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_2",
+      "target": "page_mainPage_6",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_6",
+      "target": "page_mainPage_2",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_2",
+      "target": "page_mainPage_7",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_7",
+      "target": "page_mainPage_2",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_3",
+      "target": "page_mainPage_4",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_4",
+      "target": "page_mainPage_3",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_3",
+      "target": "page_mainPage_5",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_5",
+      "target": "page_mainPage_3",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_3",
+      "target": "page_mainPage_6",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_6",
+      "target": "page_mainPage_3",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_3",
+      "target": "page_mainPage_7",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_7",
+      "target": "page_mainPage_3",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_4",
+      "target": "page_mainPage_5",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_5",
+      "target": "page_mainPage_4",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_4",
+      "target": "page_mainPage_6",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_6",
+      "target": "page_mainPage_4",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_4",
+      "target": "page_mainPage_7",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_7",
+      "target": "page_mainPage_4",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_5",
+      "target": "page_mainPage_6",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_6",
+      "target": "page_mainPage_5",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_5",
+      "target": "page_mainPage_7",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_7",
+      "target": "page_mainPage_5",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_6",
+      "target": "page_mainPage_7",
+      "type": "pagination"
+    },
+    {
+      "source": "page_mainPage_7",
+      "target": "page_mainPage_6",
+      "type": "pagination"
     }
   ]
 }

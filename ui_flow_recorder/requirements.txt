@@ -6,4 +6,4 @@ graphviz
 python-dotenv
 platformdirs
 uiautomator2
-easyocr
+easyocr==1.7.1

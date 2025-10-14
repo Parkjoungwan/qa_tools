@@ -26,6 +26,11 @@ body {
     background-color: #444;
 }
 
+#controls button.active {
+    background-color: #4CAF50;
+    border-color: #81C784;
+}
+
 #graph-canvas {
     display: block;
 }
