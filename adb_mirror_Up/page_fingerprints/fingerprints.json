@@ -74,5 +74,35 @@
     "study2_popup_mid_3_1760333069.png",
     "study2_popup_mid_6_1760333069.png",
     "study2_popup_mid_7_1760333069.png"
+  ],
+  "library": [
+    "library_2_1760487168.png",
+    "library_3_1760487168.png",
+    "library_4_1760487168.png"
+  ],
+  "wordBox": [
+    "wordBox_2_1760487222.png",
+    "wordBox_3_1760487222.png",
+    "wordBox_4_1760487222.png"
+  ],
+  "munhaeCourse": [
+    "munhaeCourse_2_1760487270.png",
+    "munhaeCourse_3_1760487270.png",
+    "munhaeCourse_4_1760487270.png"
+  ],
+  "overview": [
+    "overview_1_1760487328.png",
+    "overview_2_1760487328.png",
+    "overview_3_1760487328.png",
+    "overview_4_1760487328.png"
+  ],
+  "toggleMenu": [
+    "toggleMenu_4_1760487384.png"
+  ],
+  "tutorial": [
+    "tutorial_9_1760487423.png",
+    "tutorial_10_1760487423.png",
+    "tutorial_11_1760487423.png",
+    "tutorial_12_1760487423.png"
   ]
 }

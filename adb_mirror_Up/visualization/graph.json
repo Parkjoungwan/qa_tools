@@ -339,6 +339,168 @@
       "image": "../samples/study_out_confirm/1760333331_520068a9435db5d5_1038_905.png",
       "parent_page": "page_study_out_confirm",
       "logLine": "tap\t650.29\t520068a9435db5d5\tstudy_out_confirm\t\t1038\t905"
+    },
+    {
+      "id": "tap_unidentified_1854_43",
+      "label": "(1854,43)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/unidentified/1760333444_520068a9435db5d5_1854_43.png",
+      "parent_page": "page_unidentified",
+      "logLine": "tap\t45.61\t520068a9435db5d5\tunidentified\t\t1854\t43"
+    },
+    {
+      "id": "tap_unidentified_737_651",
+      "label": "(737,651)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/unidentified/1760334868_520068a9435db5d5_737_651.png",
+      "parent_page": "page_unidentified",
+      "logLine": "tap\t43.22\t520068a9435db5d5\tunidentified\t\t737\t651"
+    },
+    {
+      "id": "tap_unidentified_588_641",
+      "label": "(588,641)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/unidentified/1760334931_520068a9435db5d5_588_641.png",
+      "parent_page": "page_unidentified",
+      "logLine": "tap\t106.57\t520068a9435db5d5\tunidentified\t\t588\t641"
+    },
+    {
+      "id": "tap_mainPage_5_1676_740",
+      "label": "(1676,740)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/mainPage_5/1760487145_520068a9435db5d5_1676_740.png",
+      "parent_page": "page_mainPage_5",
+      "logLine": "tap\t15.91\t520068a9435db5d5\tmainPage_5\t\t1676\t740"
+    },
+    {
+      "id": "page_library",
+      "label": "library",
+      "type": "page",
+      "size": 15
+    },
+    {
+      "id": "tap_library_46_62",
+      "label": "(46,62)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/library/1760487174_520068a9435db5d5_46_62.png",
+      "parent_page": "page_library",
+      "logLine": "tap\t44.79\t520068a9435db5d5\tlibrary\t\t46\t62"
+    },
+    {
+      "id": "tap_mainPage_5_1699_236",
+      "label": "(1699,236)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/mainPage_5/1760487195_520068a9435db5d5_1699_236.png",
+      "parent_page": "page_mainPage_5",
+      "logLine": "tap\t65.76\t520068a9435db5d5\tmainPage_5\t\t1699\t236"
+    },
+    {
+      "id": "page_wordBox",
+      "label": "wordBox",
+      "type": "page",
+      "size": 15
+    },
+    {
+      "id": "tap_wordBox_48_65",
+      "label": "(48,65)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/wordBox/1760487226_520068a9435db5d5_48_65.png",
+      "parent_page": "page_wordBox",
+      "logLine": "tap\t97.75\t520068a9435db5d5\twordBox\t\t48\t65"
+    },
+    {
+      "id": "page_munhaeCourse",
+      "label": "munhaeCourse",
+      "type": "page",
+      "size": 15
+    },
+    {
+      "id": "tap_munhaeCourse_51_72",
+      "label": "(51,72)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/munhaeCourse/1760487275_520068a9435db5d5_51_72.png",
+      "parent_page": "page_munhaeCourse",
+      "logLine": "tap\t145.95\t520068a9435db5d5\tmunhaeCourse\t\t51\t72"
+    },
+    {
+      "id": "tap_mainPage_5_1718_96",
+      "label": "(1718,96)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/mainPage_5/1760487300_520068a9435db5d5_1718_96.png",
+      "parent_page": "page_mainPage_5",
+      "logLine": "tap\t170.51\t520068a9435db5d5\tmainPage_5\t\t1718\t96"
+    },
+    {
+      "id": "page_overview",
+      "label": "overview",
+      "type": "page",
+      "size": 15
+    },
+    {
+      "id": "tap_overview_51_59",
+      "label": "(51,59)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/overview/1760487333_520068a9435db5d5_51_59.png",
+      "parent_page": "page_overview",
+      "logLine": "tap\t203.28\t520068a9435db5d5\toverview\t\t51\t59"
+    },
+    {
+      "id": "tap_mainPage_5_1817_92",
+      "label": "(1817,92)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/mainPage_5/1760487364_520068a9435db5d5_1817_92.png",
+      "parent_page": "page_mainPage_5",
+      "logLine": "tap\t234.77\t520068a9435db5d5\tmainPage_5\t\t1817\t92"
+    },
+    {
+      "id": "page_toggleMenu",
+      "label": "toggleMenu",
+      "type": "page",
+      "size": 15
+    },
+    {
+      "id": "tap_toggleMenu_1734_208",
+      "label": "(1734,208)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/toggleMenu/1760487394_520068a9435db5d5_1734_208.png",
+      "parent_page": "page_toggleMenu",
+      "logLine": "tap\t264.97\t520068a9435db5d5\ttoggleMenu\t\t1734\t208"
+    },
+    {
+      "id": "page_tutorial",
+      "label": "tutorial",
+      "type": "page",
+      "size": 15
+    },
+    {
+      "id": "tap_tutorial_1864_56",
+      "label": "(1864,56)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/tutorial/1760487428_520068a9435db5d5_1864_56.png",
+      "parent_page": "page_tutorial",
+      "logLine": "tap\t298.13\t520068a9435db5d5\ttutorial\t\t1864\t56"
+    },
+    {
+      "id": "tap_toggleMenu_1648_444",
+      "label": "(1648,444)",
+      "type": "tap",
+      "size": 6,
+      "image": "../samples/toggleMenu/1760487470_520068a9435db5d5_1648_444.png",
+      "parent_page": "page_toggleMenu",
+      "logLine": "tap\t340.93\t520068a9435db5d5\ttoggleMenu\t\t1648\t444"
     }
   ],
   "edges": [
@@ -615,6 +777,136 @@
     {
       "source": "page_study_out_confirm",
       "target": "tap_study_out_confirm_1038_905",
+      "type": "containment"
+    },
+    {
+      "source": "tap_study_out_confirm_1038_905",
+      "target": "page_unidentified",
+      "type": "transition"
+    },
+    {
+      "source": "page_unidentified",
+      "target": "tap_unidentified_1854_43",
+      "type": "containment"
+    },
+    {
+      "source": "page_unidentified",
+      "target": "tap_unidentified_737_651",
+      "type": "containment"
+    },
+    {
+      "source": "page_unidentified",
+      "target": "tap_unidentified_588_641",
+      "type": "containment"
+    },
+    {
+      "source": "tap_unidentified_588_641",
+      "target": "page_mainPage_5",
+      "type": "transition"
+    },
+    {
+      "source": "page_mainPage_5",
+      "target": "tap_mainPage_5_1676_740",
+      "type": "containment"
+    },
+    {
+      "source": "tap_mainPage_5_1676_740",
+      "target": "page_library",
+      "type": "transition"
+    },
+    {
+      "source": "page_library",
+      "target": "tap_library_46_62",
+      "type": "containment"
+    },
+    {
+      "source": "tap_library_46_62",
+      "target": "page_mainPage_5",
+      "type": "transition"
+    },
+    {
+      "source": "page_mainPage_5",
+      "target": "tap_mainPage_5_1699_236",
+      "type": "containment"
+    },
+    {
+      "source": "tap_mainPage_5_1699_236",
+      "target": "page_wordBox",
+      "type": "transition"
+    },
+    {
+      "source": "page_wordBox",
+      "target": "tap_wordBox_48_65",
+      "type": "containment"
+    },
+    {
+      "source": "tap_wordBox_48_65",
+      "target": "page_mainPage_5",
+      "type": "transition"
+    },
+    {
+      "source": "page_munhaeCourse",
+      "target": "tap_munhaeCourse_51_72",
+      "type": "containment"
+    },
+    {
+      "source": "tap_munhaeCourse_51_72",
+      "target": "page_mainPage_5",
+      "type": "transition"
+    },
+    {
+      "source": "page_mainPage_5",
+      "target": "tap_mainPage_5_1718_96",
+      "type": "containment"
+    },
+    {
+      "source": "tap_mainPage_5_1718_96",
+      "target": "page_overview",
+      "type": "transition"
+    },
+    {
+      "source": "page_overview",
+      "target": "tap_overview_51_59",
+      "type": "containment"
+    },
+    {
+      "source": "tap_overview_51_59",
+      "target": "page_mainPage_5",
+      "type": "transition"
+    },
+    {
+      "source": "page_mainPage_5",
+      "target": "tap_mainPage_5_1817_92",
+      "type": "containment"
+    },
+    {
+      "source": "tap_mainPage_5_1817_92",
+      "target": "page_toggleMenu",
+      "type": "transition"
+    },
+    {
+      "source": "page_toggleMenu",
+      "target": "tap_toggleMenu_1734_208",
+      "type": "containment"
+    },
+    {
+      "source": "tap_toggleMenu_1734_208",
+      "target": "page_tutorial",
+      "type": "transition"
+    },
+    {
+      "source": "page_tutorial",
+      "target": "tap_tutorial_1864_56",
+      "type": "containment"
+    },
+    {
+      "source": "tap_tutorial_1864_56",
+      "target": "page_mainPage_5",
+      "type": "transition"
+    },
+    {
+      "source": "page_toggleMenu",
+      "target": "tap_toggleMenu_1648_444",
       "type": "containment"
     },
     {

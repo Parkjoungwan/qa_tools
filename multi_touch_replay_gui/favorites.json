@@ -365,5 +365,24 @@
         1.0
       ]
     ]
+  },
+  {
+    "name": "random",
+    "queue": [
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log_save/random_dance.log",
+        1,
+        1.0
+      ],
+      [
+        "gap",
+        1.0
+      ],
+      [
+        "gap",
+        1.0
+      ]
+    ]
   }
 ]
