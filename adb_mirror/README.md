@@ -42,3 +42,30 @@ This tool mirrors the screen of an Android device connected via ADB and logs use
 - `viewer.py`: Handles the `PyQt5` window display and user input.
 - `adb_utils.py`: Utility functions for interacting with ADB.
 - `log/`: Directory where event logs are stored.
+
+---
+
+## Future Development: iOS Support
+
+The application architecture has been refactored to support multiple device platforms through a `DeviceController` abstraction. The next major goal is to add full support for iOS devices.
+
+### Current Status
+- The application can detect connected iOS devices (requires `libimobiledevice` to be installed: `brew install libimobiledevice`).
+- The codebase is structured to handle different device types (`AndroidController`, `IOSController`).
+
+### Next Steps
+
+Implementing full iOS support is a two-part process:
+
+**1. Device Control (Tap, Swipe, Text)**
+
+- **Method:** iOS does not have an equivalent to `adb` for direct control. Control will be achieved by sending commands to a **WebDriverAgent** server running on the iOS device.
+- **Required Setup:**
+    - The user must manually build and run `WebDriverAgentRunner` on the target iOS device using Xcode.
+    - This requires an Apple ID (a free, standard Apple ID is sufficient) to sign the application.
+    - Once WebDriverAgent is running on the device, this application can connect to it to send control commands.
+
+**2. Screen Mirroring**
+
+- **Method:** A replacement for `scrcpy` is needed for iOS.
+- **Planned Approach (for macOS):** Implement a native screen capture solution using the `AVFoundation` framework via the `pyobjc` library. This will create a custom viewer window for each iOS device.

@@ -1,22 +1,12 @@
-import sys, os, argparse, time, subprocess, threading
+import sys, argparse, time, subprocess, threading
 from datetime import datetime
 from pathlib import Path
 from typing import List
 
-# ── venv site‑packages 경로 주입 ─────────────────────────────
-site_packages_path = os.path.join(
-    os.path.dirname(os.path.abspath(__file__)),
-    "venv", "lib", "python3.13", "site-packages"
-)
-if site_packages_path not in sys.path:
-    sys.path.insert(0, site_packages_path)
+from controllers.android import AndroidController, get_android_devices
+from controllers.ios import IOSController, get_ios_devices
+from controllers.base import DeviceController
 
-# ───────────────────── 연결 기기 탐색 ─────────────────────
-def pick_devices(max_devices: int = 2) -> List[str]:
-    lines = subprocess.check_output(["adb", "devices"]).decode().strip().splitlines()[1:]
-    return [l.split()[0] for l in lines if l.strip().endswith("device")][:max_devices]
-
-# ─────────────────────────── main ───────────────────────────
 def main() -> None:
     # ADB 서버를 재시작하여 모든 기존 연결/포워딩/좀비 프로세스를 초기화
     print("🔄 Restarting ADB server for a clean state...")
@@ -31,82 +21,52 @@ def main() -> None:
 
     print(f"🚀 Starting in {args.mode.upper()} mode.")
 
-    serials = pick_devices(2)
-    if not serials:
-        print("⛔ ADB 기기가 연결되지 않았습니다."); sys.exit(1)
-    print(f"Found {len(serials)} device(s).")
+    # --- Device Detection ---
+    controllers: List[DeviceController] = []
+    android_serials = get_android_devices()
+    controllers.extend([AndroidController(s) for s in android_serials])
+
+    ios_serials = get_ios_devices()
+    controllers.extend([IOSController(s) for s in ios_serials])
+
+    if not controllers:
+        print("⛔ No devices found."); sys.exit(1)
+    
     if args.flip:
-        serials.reverse()
-    print("🎮 Using devices:", serials)
+        controllers.reverse()
+    
+    print(f"Found {len(controllers)} device(s).")
+    for c in controllers:
+        res_str = f"{c.device_res[0]}x{c.device_res[1]}" if c.device_res else "Unknown Res"
+        type_str = "Android" if isinstance(c, AndroidController) else "iOS"
+        print(f"🎮 Using {type_str} device: {c.serial} ({res_str})")
 
-    # ── 디바이스 해상도 (세로/가로 스왑) ─────────────────────
-    device_res = {}
-    for s in serials:
-        w, h = map(int, subprocess.check_output(
-            ["adb","-s",s,"shell","wm","size"]).decode().strip().split(": ")[-1].split("x"))
-        if h > w: w, h = h, w
-        device_res[s] = (w, h)
-        print(f"{s}: {w}×{h}")
 
-    # ── 창 크기 ────────────────────────────────────────────
+    # --- Window and Mirroring Setup ---
     VIEW_W = 1200
     VIEW_H = 750
-    SCRCPY_MAX = "960"
 
-    # ── scrcpy 공통 옵션 ───────────────────────────────────
-    scrcpy_common_args = [
-        "--no-audio",
-        "--window-borderless",
-        "--max-size", SCRCPY_MAX,
-    ]
+    for i, controller in enumerate(controllers):
+        rect = (i * VIEW_W, 0, VIEW_W, VIEW_H)
+        no_control = (args.mode == 'log')
+        p = controller.start_mirror(f"Mirror - {controller.serial}", rect, no_control=no_control)
+        if p:
+            # Start a thread to print stderr for debugging
+            threading.Thread(target=lambda: [print(f"[{controller.serial}] {l.decode().strip()}") for l in iter(p.stderr.readline, b'')], daemon=True).start()
 
-    # ── 모드에 따른 scrcpy 실행 및 대기 ───────────────────
-    scrcpy_ps = []
+    # --- Mode Handling ---
     if args.mode == 'fast':
-        # FAST MODE: scrcpy가 직접 제어. 가장 단순한 형태로 실행.
-        for i, s in enumerate(serials):
-            cmd = ["scrcpy", "--serial", s] + scrcpy_common_args + [
-                "--window-title", f"scrcpy - {s}",
-                "--window-x", str(i * VIEW_W), "--window-y", "0",
-                "--window-width", str(VIEW_W), "--window-height", str(VIEW_H),
-            ]
-            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
-            scrcpy_ps.append(p)
-            # 실시간 에러 출력을 위한 스레드는 그대로 유지
-            threading.Thread(target=lambda pr, sid=s: [print(f"[{sid}] {l.decode().strip()}") for l in iter(pr.stderr.readline, b'')], daemon=True, args=(p,)).start()
-
-        print("\n✅ scrcpy windows launched in FAST mode. Waiting for exit...")
-
-        # --- 프로세스 종료 후 결과 및 오류를 명시적으로 출력 (디버깅용) ---
-        for p in scrcpy_ps:
-            stdout, stderr = p.communicate() # 프로세스가 종료될 때까지 기다리고 출력을 가져옴
-            if p.returncode != 0:
-                # p.args에서 시리얼 번호 추출 (cmd 리스트의 3번째 요소)
-                serial = p.args[2] if len(p.args) > 2 else "unknown"
-                print(f"🚨 scrcpy process for device {serial} exited with error code {p.returncode}.")
-                if stdout:
-                    print(f"   --- stdout ---\n{stdout.decode('utf-8', errors='ignore')}")
-                if stderr:
-                    print("   --- stderr ---")
-                    print(stderr.decode('utf-8', errors='ignore'))
-
+        print("\n✅ Mirroring windows launched in FAST mode. Waiting for exit...")
+        # In fast mode, we just wait for the processes to end.
+        for controller in controllers:
+            if controller.mirror_process:
+                controller.mirror_process.wait()
 
     else: # args.mode == 'log'
-        # LOG MODE: viewer.py 오버레이로 제어 및 로깅.
         from PyQt5.QtWidgets import QApplication
-        app = QApplication(sys.argv)
-        from viewer import MultiViewer, tap, swipe, text
+        from viewer import MultiViewer
 
-        for i, s in enumerate(serials):
-            cmd = ["scrcpy", "--serial", s, "--no-control"] + scrcpy_common_args + [
-                "--window-title", f"scrcpy - {s}",
-                "--window-x", str(i * VIEW_W), "--window-y", "0",
-                "--window-width", str(VIEW_W), "--window-height", str(VIEW_H),
-            ]
-            p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, start_new_session=True)
-            scrcpy_ps.append(p)
-            threading.Thread(target=lambda pr, sid=s: [print(f"[{sid}] {l.decode().strip()}") for l in iter(pr.stderr.readline, b'')], daemon=True, args=(p,)).start()
-            time.sleep(1)
+        app = QApplication(sys.argv)
 
         log_dir = Path(__file__).with_name("log"); log_dir.mkdir(exist_ok=True)
         log_path = log_dir/f"adb_{datetime.now():%Y%m%d_%H%M%S}.log"
@@ -122,29 +82,19 @@ def main() -> None:
             elif kind == "text": line += f"\t{a[0]}"
             print(line); log_fp.write(line + "\n")
 
-        viewer = MultiViewer(serials, log_fn=log_event, device_resolutions=device_res,
+        viewer = MultiViewer(controllers, log_fn=log_event,
                              viewer_width_per_device=VIEW_W, viewer_height=VIEW_H)
-        viewer.tap_func = lambda s, x, y, v=viewer: threading.Thread(target=tap, args=(s, x, y, v), daemon=True).start()
-        viewer.swipe_func = lambda s, x1, y1, x2, y2, d, v=viewer: threading.Thread(target=swipe, args=(s, x1, y1, x2, y2, d, v), daemon=True).start()
-        viewer.text_func = lambda s, t, v=viewer: threading.Thread(target=text, args=(s, t, v), daemon=True).start()
         viewer.show()
         app.exec_()
-        # app.exec_() is blocking, code below will run after viewer is closed
-        log_fp.close(); print("📄 Log saved:", log_path)
+        
+        log_fp.close()
+        print("📄 Log saved:", log_path)
 
     # --- Cleanup ---
-    try:
-        # Wait for all scrcpy processes to complete (if they haven't already)
-        for p in scrcpy_ps:
-            p.wait(timeout=1)
-    except (KeyboardInterrupt, subprocess.TimeoutExpired):
-        pass # Ignore timeout, just proceed to terminate
-    finally:
-        for p in scrcpy_ps:
-            if p.poll() is None:
-                p.terminate()
-                p.wait()
-        print("✨ All scrcpy windows closed.")
+    print("Cleaning up resources...")
+    for controller in controllers:
+        controller.stop_mirror()
+    print("✨ All mirror windows closed.")
 
 if __name__=="__main__":
     main()
