@@ -21,6 +21,8 @@
     const BLACK_TABLE = { Triad:[0,4,7], Seventh:[0,4,7,11] };
 
     const state = { key:0, mode:"Major", quality:"Triad", inversion:0, baseOct:4, preset:"C", presetType:"harm", bpm:100 };
+    let tracks = [];
+    let trackIdCounter = 0;
     let audioSetupDone = false;
 
     const masterOut = new Tone.Gain(1);
@@ -74,7 +76,17 @@
       const percent = (Tone.Transport.seconds % MAX_LOOP_SECONDS) / MAX_LOOP_SECONDS;
       ui.playhead.style.left = `${percent * 100}%`;
     }
-    Tone.Draw.schedule(updatePlayhead, "+0");
+    function animate() {
+      updatePlayhead();
+
+      const now = Tone.Transport.seconds;
+      for (const track of tracks) {
+        track.part.mute = !(now >= track.startTime && now < track.endTime);
+      }
+
+      requestAnimationFrame(animate);
+    }
+    animate();
 
     function updatePlayButton(state = Tone.Transport.state) {
       if (ui.playPauseBtn) {
@@ -260,8 +272,6 @@
       });
     });
 
-    let tracks = [];
-    let trackIdCounter = 0;
     function ensureTransport(){ if(Tone.Transport.state!=="started") Tone.Transport.start(); }
     const rec = { active:false, events:[], activeDown:{} };
     const snapshotCtx = ()=> ({ key:state.key, mode:state.mode, quality:state.quality, inversion:state.inversion, baseOct:state.baseOct, presetType:state.presetType });
@@ -316,6 +326,7 @@
 
       part.loop = true;
       part.loopEnd = duration;
+      part.mute = true;
       part.start(startTime);
 
       const track = { id, part, events, startTime, endTime, domElement };
@@ -378,16 +389,24 @@
       track.domElement.style.left = `${(track.startTime / MAX_LOOP_SECONDS) * 100}%`;
       track.domElement.style.width = `${(newDuration / MAX_LOOP_SECONDS) * 100}%`;
 
-      track.part.stop();
-      track.part.clear();
-      track.events.forEach(ev => {
-        const eventTimeInLoop = ev.time - track.startTime;
-        if (eventTimeInLoop >= 0 && eventTimeInLoop < newDuration) {
-            track.part.add({ ...ev, time: eventTimeInLoop });
+      track.part.dispose(); // Cleanly remove the old part
+
+      // Create a new part with the updated settings
+      const newPart = new Tone.Part((time, ev) => {
+        if (isDrumCtx(ev.ctx)) {
+          triggerDrum(ev.slotId, time);
+        } else {
+          const notes = chordSeven(ev.slotId, ev.ctx);
+          chordSynth.triggerAttackRelease(notes, ev.dur, time);
         }
-      });
-      track.part.loopEnd = newDuration;
-      track.part.start(track.startTime);
+      }, track.events.map(ev => ({ ...ev, time: ev.time - track.startTime })));
+
+      newPart.loop = true;
+      newPart.loopEnd = newDuration;
+      newPart.mute = true; // Start muted
+      newPart.start(track.startTime);
+
+      track.part = newPart; // Replace the old part with the new one
     }
 
     function transpose(semi){ state.key=wrap12(state.key+semi); updateStatus(); retargetHeld(); }

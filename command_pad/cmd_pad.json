@@ -109,6 +109,11 @@
         "name": "capture_pull",
         "script": "capture_pull.sh",
         "args": "1"
+      },
+      {
+        "name": "record_button",
+        "script": "record_30s.sh",
+        "args": "1"
       }
     ]
   },

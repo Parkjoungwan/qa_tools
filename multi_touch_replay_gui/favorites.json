@@ -384,5 +384,20 @@
         1.0
       ]
     ]
+  },
+  {
+    "name": "page Pass",
+    "queue": [
+      [
+        "gap",
+        1.0
+      ],
+      [
+        "log",
+        "/Users/kim/opencv_project/adb_mirror/log/adb_20251020_112435.log",
+        1,
+        1.0
+      ]
+    ]
   }
 ]

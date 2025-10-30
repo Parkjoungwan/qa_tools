@@ -16,7 +16,7 @@ class AdbMonitor:
     def __init__(self):
         self.root = tk.Tk()
         self.root.title("Android App Monitor")
-        self.root.geometry("400x220") # Increased height for the button
+        self.root.geometry("400x250")
         self.root.protocol("WM_DELETE_WINDOW", self._on_closing)
 
         self.running = True
@@ -35,7 +35,9 @@ class AdbMonitor:
         self.mem_label.pack(pady=5)
         self.mem_percent_label = tk.Label(self.root, text="Memory (vs Total): - %", font=("Helvetica", 12))
         self.mem_percent_label.pack(pady=5)
-        
+        self.used_mem_label = tk.Label(self.root, text="Used Memory: - MB", font=("Helvetica", 12))
+        self.used_mem_label.pack(pady=5)
+
         self.diagram_button = tk.Button(self.root, text="Make Diagram", command=self.create_diagram)
         self.diagram_button.pack(pady=10)
 
@@ -79,6 +81,11 @@ class AdbMonitor:
         if output and (match := re.search(r"MemTotal:\s+(\d+)\s+kB", output)): return int(match.group(1)) / 1024
         return 0
 
+    def _get_used_memory(self):
+        output = self._run_adb_command("shell dumpsys meminfo")
+        if output and (match := re.search(r"Used RAM:\s+([\d,]+)K", output)): return int(match.group(1).replace(',', '')) / 1024
+        return 0
+
     def _get_cpu_core_count(self):
         output = self._run_adb_command("shell top -n 1")
         if output and (match := re.search(r"(\d+)%cpu", output)): return int(match.group(1)) / 100
@@ -90,7 +97,7 @@ class AdbMonitor:
         return None
 
     def _get_usage_stats(self, package_name):
-        mem_mb, pid, cpu_percent_raw = 0, None, 0.0
+        mem_mb, pid, cpu_percent_raw = None, None, None
         mem_output = self._run_adb_command(f"shell dumpsys meminfo {package_name}")
         if mem_output:
             if (pid_match := re.search(r"pid\s+(\d+)", mem_output)): pid = pid_match.group(1)
@@ -108,21 +115,36 @@ class AdbMonitor:
 
     def _update_loop(self):
         while self.running:
+            used_mem = self._get_used_memory()
+            if used_mem:
+                self.used_mem_label.config(text=f"Used Memory: {used_mem:.2f} MB")
+            else:
+                self.used_mem_label.config(text="Used Memory: - MB")
+
             package = self._get_frontmost_package()
             if package:
                 self.status_label.config(text=f"Monitoring: {package}", fg="green")
+                self.app_name_label.config(text=f"App: {package}")
                 cpu_raw, mem = self._get_usage_stats(package)
-                
-                cpu_normalized = (cpu_raw / self.cpu_core_count) if self.cpu_core_count > 0 else 0
-                mem_perc = (mem / self.total_mem_mb) * 100 if self.total_mem_mb > 0 else 0
-                
+
+                cpu_normalized = None
+                if cpu_raw is not None:
+                    cpu_normalized = (cpu_raw / self.cpu_core_count) if self.cpu_core_count > 0 else 0
+                    self.cpu_label.config(text=f"CPU (Normalized): {cpu_normalized:.2f} %")
+                else:
+                    self.cpu_label.config(text="CPU (Normalized): - %")
+
+                mem_perc = None
+                if mem is not None:
+                    mem_perc = (mem / self.total_mem_mb) * 100 if self.total_mem_mb > 0 else 0
+                    self.mem_label.config(text=f"Memory: {mem:.2f} MB")
+                    self.mem_percent_label.config(text=f"Memory (vs Total): {mem_perc:.2f} %")
+                else:
+                    self.mem_label.config(text="Memory: - MB")
+                    self.mem_percent_label.config(text="Memory (vs Total): - %")
+
                 self.cpu_log.append(cpu_normalized)
                 self.mem_log.append(mem_perc)
-
-                self.app_name_label.config(text=f"App: {package}")
-                self.cpu_label.config(text=f"CPU (Normalized): {cpu_normalized:.2f} %")
-                self.mem_label.config(text=f"Memory: {mem:.2f} MB")
-                self.mem_percent_label.config(text=f"Memory (vs Total): {mem_perc:.2f} %")
             else:
                 self.status_label.config(text="No focused app found.", fg="orange")
             time.sleep(2)
